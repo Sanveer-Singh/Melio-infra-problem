@@ -1,6 +1,6 @@
 ---
 name: Melio IaC Assessment Plan
-overview: "A phased, commit-by-commit approach to deploy the 3-service Clojure MVP onto AWS af-south-1 (Cape Town) using Terraform (>= 1.9, AWS provider ~> 6.0) with modular IaC, nginx reverse proxy, ALB, and comprehensive documentation -- scoped to a single-region, non-HA dev environment with explicit story refinement and future-work callouts."
+overview: "A phased, commit-by-commit approach to deploy the 3-service Clojure MVP onto AWS af-south-1 (Cape Town) using Terraform (>= 1.10, AWS provider ~> 6.0) with modular IaC, nginx reverse proxy, ALB, and comprehensive documentation -- scoped to a single-region, non-HA dev environment with explicit story refinement and future-work callouts."
 todos:
   - id: phase-0-scaffold
     content: "Phase 0: Validate af-south-1 access on charteracademy profile, create project scaffolding, .cursor/rules, docs/ templates, .gitignore, terraform/ skeleton"
@@ -50,7 +50,7 @@ graph TB
         end
         ALB["ALB :80\n2-AZ required"]
         S3Art["S3 Artifact Bucket\nJARs + static.tgz"]
-        S3State["S3 State Bucket\n(use_lockfile=true)"]
+        S3State["S3 State Bucket\n+ DynamoDB Lock"]
         SSM["SSM Parameter Store\nNEWSFEED_SERVICE_TOKEN"]
         IGW["Internet Gateway"]
     end
@@ -101,8 +101,8 @@ The assessment explicitly asks candidates to push back on underspecified stories
 - **S3 artifact bucket in bootstrap**: Artifact bucket created during bootstrap (before `terraform apply`) so EC2 user data can pull JARs immediately at boot. Solves the sequencing problem of EC2s booting before artifacts exist.
 - **SSM SecureString for token**: `NEWSFEED_SERVICE_TOKEN` stored in SSM Parameter Store, read at boot via IAM policy. Never in version control or tfvars. Note: the token is hardcoded in `newsfeed/core.clj` source -- SSM demonstrates the correct production pattern even though the value is not truly secret here.
 - **systemd services**: Each JAR runs as a systemd unit -- auto-restart on failure, proper logging to journald, clean shutdown. JVM launched with `-Xmx512m -XX:+UseSerialGC` to bound memory.
-- **Remote state from day 1**: S3 (versioned, encrypted) with native S3 locking (`use_lockfile = true`) in af-south-1. DynamoDB lock table is no longer needed -- Terraform 1.10+ uses S3 conditional writes for atomic locking. Signals state-management hygiene even for a single deployment.
-- **Terraform >= 1.9, AWS provider ~> 6.0**: Pinned to current stable versions (Terraform v1.14.8, provider v6.39.0 as of April 2026). Avoids drift from unversioned configs.
+- **Remote state from day 1**: S3 (versioned, encrypted) with DynamoDB lock table in af-south-1. DynamoDB chosen for explicit lock visibility and backward compatibility (`use_lockfile = true` is available in Terraform >= 1.10 as an alternative). Signals state-management hygiene even for a single deployment.
+- **Terraform >= 1.10, AWS provider ~> 6.0**: Pinned to current stable versions (Terraform v1.14.8, provider v6.39.0 as of April 2026). Avoids drift from unversioned configs.
 
 ## Terraform Module Structure
 
@@ -193,7 +193,7 @@ All user data scripts begin with `#!/bin/bash` and `set -euxo pipefail` for fail
 - **Commit**: `chore: scaffold project structure, cursor rules, and docs templates`
 
 ### Phase 1: Bootstrap and Build Artifacts (~30 min)
-- `terraform/bootstrap/` in **af-south-1**: S3 state bucket (versioned, encrypted, native S3 locking via `use_lockfile = true`) + **S3 artifact bucket** (versioned, private, encrypted). No DynamoDB needed.
+- `terraform/bootstrap/` in **af-south-1**: S3 state bucket (versioned, encrypted) + DynamoDB lock table + **S3 artifact bucket** (versioned, private, encrypted).
 - Apply bootstrap: `cd terraform/bootstrap && terraform init && terraform apply`
 - `scripts/Dockerfile.build` -- `FROM clojure:temurin-17-lein` (resolves to Lein 2.12.0, JDK 17), copies repo, runs `make libs && make clean all`
 - `scripts/build-docker.sh` -- builds Docker image, extracts `build/*.jar` + `build/static.tgz` to host
@@ -310,7 +310,7 @@ All user data scripts begin with `#!/bin/bash` and `set -euxo pipefail` for fail
 | Boot timing (frontend before backends) | First page load shows errors | `/ping` is independent of backends; browser refresh after 30-60s resolves. Acceptable for demo. |
 | Build fails (lein/Java issues) | No artifacts to deploy | Docker-based build as primary (isolated env); local build as fallback |
 | Over time budget (> 4 hours) | Incomplete submission | Time-box each phase; drop ALB if behind (use direct EC2 public IP) |
-| Terraform state corruption | Cannot manage infra | S3 versioning + native S3 locking (`use_lockfile = true`) |
+| Terraform state corruption | Cannot manage infra | S3 versioning + DynamoDB state locking |
 | af-south-1 service quirks | Unexpected API errors | Region is configurable via `var.region`; switch to us-east-1 with a single variable change |
 
 ## Fallback: Simplified Single-Instance Approach
@@ -335,6 +335,6 @@ If behind on time after Phase 2 (networking), fall back to:
 
 ## Tools and Research Used
 
-- **Perplexity MCP**: Validated Terraform v1.14.8, AWS provider v6.39.0, af-south-1 opt-in/STS behavior, AL2023 nginx+Corretto availability, Clojure 1.8/Java 17 compatibility, Docker image tags (Lein 2.12.0 confirmed April 2026), t3.small memory, af-south-1 pricing, S3 native state locking (`use_lockfile = true`) -- DynamoDB deprecated
+- **Perplexity MCP**: Validated Terraform v1.14.8, AWS provider v6.39.0, af-south-1 opt-in/STS behavior, AL2023 nginx+Corretto availability, Clojure 1.8/Java 17 compatibility, Docker image tags (Lein 2.12.0 confirmed April 2026), t3.small memory, af-south-1 pricing, S3 + DynamoDB state locking (use_lockfile available in TF >= 1.10 as alternative)
 - **Context7 MCP**: Verified AWS provider 6.x S3 resource patterns (`aws_s3_bucket`, `aws_s3_bucket_versioning`, `aws_s3_bucket_server_side_encryption_configuration`, `aws_s3_bucket_public_access_block` remain separate resources)
 - **Codebase exploration**: Full source review of all 3 services, Makefile, project.clj files, /ping endpoints, static assets, env var wiring

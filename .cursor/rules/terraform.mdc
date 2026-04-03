@@ -48,7 +48,7 @@ Each module directory contains: `main.tf`, `variables.tf`, `outputs.tf`
 
 ## Remote State
 - S3 backend (versioned, encrypted) + DynamoDB lock table, both in af-south-1
-- `use_lockfile` is an OpenTofu feature, NOT available in HashiCorp Terraform -- always use DynamoDB for state locking
+- `use_lockfile = true` is available in Terraform >= 1.10 for native S3 locking; this project uses DynamoDB (`dynamodb_table`) for backward compatibility and explicit lock visibility
 - `.terraform.lock.hcl` must always be committed to version control
 
 ## Pre-commit Checks

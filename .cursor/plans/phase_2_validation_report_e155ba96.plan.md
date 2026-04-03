@@ -4,28 +4,28 @@ overview: Evaluation of Phase 2 (Networking) implementation against its executio
 todos:
   - id: fix-backend
     content: "Fix terraform/backend.tf: replace dynamodb_table with use_lockfile = true"
-    status: pending
+    status: cancelled
   - id: fix-version
     content: "Fix terraform/providers.tf: change required_version from >= 1.9 to >= 1.10"
-    status: pending
+    status: completed
   - id: fix-rule
     content: "Fix .cursor/rules/terraform.mdc: correct Remote State section to reflect use_lockfile support"
-    status: pending
+    status: completed
   - id: fix-tradeoffs
     content: "Fix docs/trade-offs.md: correct Remote State section + convert HTML comment placeholders to visible text"
-    status: pending
+    status: completed
   - id: fix-phase2-plan
     content: "Update Phase 2 plan: remove/correct Step 2.11 contradiction"
-    status: pending
+    status: completed
   - id: fix-master-plan
     content: Verify master plan consistency (already says use_lockfile)
-    status: pending
+    status: completed
   - id: optional-dynamodb
     content: (Optional) Remove DynamoDB table from bootstrap/main.tf or leave as harmless
-    status: pending
+    status: cancelled
   - id: optional-cidr
     content: (Optional) Remove hardcoded CIDRs from root main.tf or promote to root variables
-    status: pending
+    status: completed
 isProject: false
 ---
 
