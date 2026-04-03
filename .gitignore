@@ -30,5 +30,5 @@ override.tf.json
 # SSH keys
 *.pem
 
-# Cursor IDE (plans are local; rules are shared)
-.cursor/plans/
+# Cursor IDE
+# .cursor/rules/ and .cursor/plans/ are both version-controlled

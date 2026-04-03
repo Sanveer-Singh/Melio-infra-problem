@@ -30,5 +30,6 @@ Use conventional commits: `feat:`, `fix:`, `chore:`, `docs:`
 - Always tag resources via provider `default_tags`
 
 ## Reference
+- Plans are version-controlled in `.cursor/plans/`
 - Full architecture plan: `.cursor/plans/melio_iac_assessment_plan_349f73ef.plan.md`
 - Phase execution plans: `.cursor/plans/phase_*_execution_*.plan.md`
