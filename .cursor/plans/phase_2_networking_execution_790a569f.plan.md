@@ -3,38 +3,44 @@ name: Phase 2 Networking Execution
 overview: "Comprehensive execution plan for Phase 2 of the Melio IaC Assessment: create root Terraform configuration (providers.tf, backend.tf, variables.tf, locals.tf) and the networking module (VPC, 2 public subnets, IGW, route table) in af-south-1, on a new feature branch."
 todos:
   - id: branch
-    content: "Step 2.0: Create feature/phase-2-networking branch from Feature/Iac-implementation"
-    status: pending
+    content: "Step 2.0: Branch feature/phase-2-implementation created; Phase 1 merged in"
+    status: completed
   - id: providers
-    content: "Step 2.1: Populate terraform/providers.tf with required_version, required_providers, provider block with default_tags"
-    status: pending
+    content: "Step 2.1: Populate terraform/providers.tf with required_version >= 1.9, required_providers ~> 6.0, default_tags"
+    status: completed
   - id: backend
-    content: "Step 2.2: Populate terraform/backend.tf with S3 backend config (hardcoded bucket name, use_lockfile=true, no DynamoDB)"
-    status: pending
+    content: "Step 2.2: Populate terraform/backend.tf with S3 backend + DynamoDB lock table (use_lockfile is OpenTofu-only)"
+    status: completed
   - id: variables
     content: "Step 2.3: Populate terraform/variables.tf with ALL root variables (region, project_name, environment, aws_profile, instance_type, ssh_cidr)"
-    status: pending
+    status: completed
   - id: locals
     content: "Step 2.4: Populate terraform/locals.tf with name_prefix computed value"
-    status: pending
+    status: completed
   - id: net-vars
     content: "Step 2.5: Populate terraform/modules/networking/variables.tf (name_prefix, vpc_cidr, public_subnet_cidrs, availability_zones)"
-    status: pending
+    status: completed
   - id: net-main
     content: "Step 2.6: Populate terraform/modules/networking/main.tf (VPC, 2 subnets, IGW, route table, associations)"
-    status: pending
+    status: completed
   - id: net-outputs
     content: "Step 2.7: Populate terraform/modules/networking/outputs.tf (vpc_id, public_subnet_ids, public_subnet_a_id, public_subnet_b_id)"
-    status: pending
+    status: completed
   - id: root-main
     content: "Step 2.8: Populate terraform/main.tf with networking module wiring"
-    status: pending
+    status: completed
   - id: root-outputs
     content: "Step 2.9: Populate terraform/outputs.tf with networking-related outputs"
-    status: pending
+    status: completed
   - id: validate-commit
-    content: "Step 2.10: terraform fmt, terraform init -backend=false, terraform validate, commit with .terraform.lock.hcl"
-    status: pending
+    content: "Step 2.10: terraform fmt, terraform init -backend=false, terraform validate -- all passed"
+    status: completed
+  - id: dynamodb-fix
+    content: "Step 2.11: Added DynamoDB lock table to bootstrap (use_lockfile is OpenTofu-only, not Terraform)"
+    status: completed
+  - id: docs-update
+    content: "Step 2.12: Updated trade-offs.md, terraform.mdc, Phase 1/2 plans for DynamoDB correction"
+    status: completed
 isProject: false
 ---
 
@@ -44,10 +50,10 @@ isProject: false
 
 Phase 2's code can be **written and validated** without Phase 1 being applied, using `terraform init -backend=false`. However, full `terraform init` (with backend) requires:
 
-- S3 state bucket exists (expected name: `melio-devops-dev-tfstate-<account-id>`, incorporating AWS account ID per Phase 1 convention)
-- No DynamoDB lock table needed -- Phase 1 uses S3 native locking (`use_lockfile = true`)
+- S3 state bucket exists (name: `melio-devops-dev-tfstate-542088537418`, account ID confirmed via `aws sts get-caller-identity`)
+- DynamoDB lock table exists (name: `melio-devops-dev-terraform-locks`) -- added in Phase 2 after discovering `use_lockfile` is OpenTofu-only
 - State bucket in **af-south-1** per the [main plan](.cursor/plans/melio_iac_assessment_plan_349f73ef.plan.md)
-- Terraform >= 1.10 installed for `use_lockfile` support (v1.14.8 confirmed)
+- Terraform >= 1.9 installed (v1.14.8 confirmed)
 
 **Assumption**: Bootstrap bucket/table names follow the `${project_name}-${environment}-*` convention. If Phase 1 uses different names, `backend.tf` values must be updated to match.
 
@@ -70,7 +76,7 @@ Phase 2's code can be **written and validated** without Phase 1 being applied, u
 - **No breaking changes** in AWS provider 6.x for `aws_vpc`, `aws_subnet`, `aws_internet_gateway`, `aws_route_table`, `aws_route_table_association` -- syntax is identical to provider 5.x.
 - **`enable_dns_support` and `enable_dns_hostnames`** remain valid on `aws_vpc` in provider 6.x (both default to `true` but should be explicit for clarity).
 - **`default_tags` block** syntax confirmed: nested under `provider "aws"`, not under `terraform {}`. Resource-level `Name` tags merge with provider-level default tags.
-- **S3 backend** in Terraform 1.10+ supports `use_lockfile = true` for native S3 locking (no DynamoDB needed). Phase 1 research confirmed DynamoDB locking is deprecated. We use `use_lockfile = true` and drop `dynamodb_table` entirely.
+- **S3 backend** uses DynamoDB for state locking. `use_lockfile = true` is an **OpenTofu-only feature** (widely misattributed to Terraform in blog posts). Verified via official HashiCorp GitHub releases -- not available in any Terraform version including v1.14.8. DynamoDB lock table added to bootstrap in Phase 2.
 - **`terraform {}` blocks can be split across files** (providers.tf + backend.tf) -- Terraform merges them. No conflicts as long as no setting is duplicated.
 
 ### Discrepancy Between Plans

@@ -6,11 +6,11 @@ todos:
     content: "Phase 0: Validate af-south-1 access on charteracademy profile, create project scaffolding, .cursor/rules, docs/ templates, .gitignore, terraform/ skeleton"
     status: completed
   - id: phase-1-bootstrap
-    content: "Phase 1: Bootstrap remote state (S3 with native locking) AND S3 artifact bucket in af-south-1, then build + upload JARs"
-    status: in_progress
+    content: "Phase 1: Bootstrap remote state (S3 + DynamoDB lock) AND S3 artifact bucket in af-south-1, then build + upload JARs"
+    status: completed
   - id: phase-2-networking
-    content: "Phase 2: Networking module (VPC, 2 public subnets af-south-1a/b, IGW, routes), providers.tf (~> 6.0), backend.tf"
-    status: pending
+    content: "Phase 2: Networking module (VPC, 2 public subnets af-south-1a/b, IGW, routes), providers.tf (~> 6.0), backend.tf + DynamoDB correction"
+    status: completed
   - id: phase-3-security
     content: "Phase 3: Security groups (ALB, frontend, backend, SSH) + IAM roles/policies + SSM parameter for token"
     status: pending

@@ -62,7 +62,7 @@ isProject: false
 > current shell. Before any Terraform steps can run, ensure Terraform >= 1.9 is installed and
 > accessible from Git Bash / WSL / your terminal of choice.
 >
-> **Verification**: `terraform version` must return `>= 1.9.0` (we target 1.10+ for `use_lockfile`).
+> **Verification**: `terraform version` must return `>= 1.9.0`. Note: `use_lockfile` is OpenTofu-only; DynamoDB is used for state locking.
 
 Phase 0 scaffold files are confirmed present on `Feature/Iac-implementation`:
 - `terraform/bootstrap/` with empty `main.tf`, `variables.tf`, `outputs.tf`
@@ -75,7 +75,7 @@ Phase 0 scaffold files are confirmed present on `Feature/Iac-implementation`:
 
 Four corrections from live research (Perplexity MCP + Context7 MCP, April 2026):
 
-1. **No DynamoDB needed**: Terraform 1.10+ (GA) supports `use_lockfile = true` for native S3 state locking via S3 conditional writes. DynamoDB locking is **deprecated** and will be removed in a future Terraform release. DynamoDB table is dropped from bootstrap entirely. Documented as a legacy alternative in `docs/trade-offs.md`.
+1. **~~No DynamoDB needed~~ CORRECTION (Phase 2)**: `use_lockfile = true` is an **OpenTofu-only feature**, NOT available in HashiCorp Terraform. Verified via official HashiCorp GitHub releases -- widely misattributed in blog posts. DynamoDB lock table was added back to bootstrap during Phase 2 execution. See `docs/trade-offs.md` for details.
 2. **Docker image tag correction**: `clojure:temurin-17-lein-2.12.0` is NOT a valid Docker Hub tag. Correct tag: `clojure:temurin-17-lein` (resolves to Lein 2.12.0 on JDK 17, verified April 2026).
 3. **S3 bucket resources**: AWS provider 6.x still uses separate resources for versioning (`aws_s3_bucket_versioning`), encryption (`aws_s3_bucket_server_side_encryption_configuration`), and public access (`aws_s3_bucket_public_access_block`). No consolidation from 5.x. Confirmed via Context7 and Perplexity.
 4. **AWS Provider 6.x region feature**: Regional resources now support an inline `region` argument, eliminating provider aliases for cross-region work. Not relevant for Phase 1 (single region) but noted for awareness.

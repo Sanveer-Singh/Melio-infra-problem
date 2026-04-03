@@ -30,22 +30,22 @@ Each decision follows the format: **Decision** / Options Considered / Chosen / R
 
 ## Remote State in af-south-1 (vs us-east-1)
 
-**Decision**: S3 state bucket in af-south-1 with native S3 locking (`use_lockfile = true`).
+**Decision**: S3 state bucket + DynamoDB lock table, both in af-south-1.
 
 **Options considered**:
-- S3 + DynamoDB lock table (legacy Terraform pattern, pre-1.10)
-- S3 with native locking in af-south-1 (chosen)
-- S3 with native locking in us-east-1 (cross-region state)
+- S3 + DynamoDB lock table (chosen)
+- S3 with native locking via `use_lockfile` (OpenTofu only -- NOT available in HashiCorp Terraform)
+- S3 without locking (risky for teams, acceptable for solo dev)
 
-**Chosen**: S3 in af-south-1 with `use_lockfile = true` (native S3 locking).
+**Chosen**: S3 + DynamoDB in af-south-1.
 
 **Rationale**:
-- Terraform 1.10+ supports native S3 state locking via S3 conditional writes -- DynamoDB is deprecated and will be removed in a future Terraform release
-- Fewer resources to manage (no DynamoDB table), lower cost, simpler architecture
+- `use_lockfile = true` is an **OpenTofu-only feature** (v1.10+), widely misattributed to HashiCorp Terraform in blog posts. Verified via official HashiCorp GitHub releases -- no such parameter exists in Terraform v1.14.8 or any prior version.
+- DynamoDB PAY_PER_REQUEST keeps cost near-zero for a demo workload
 - Keeping state in the same region as infrastructure simplifies operations
 - Trade-off: if af-south-1 has an outage, both infra and state are inaccessible. For a single-region dev environment, this is acceptable.
 
-**Alternative**: DynamoDB lock table -- only needed for teams on Terraform < 1.10 or needing cross-tool lock visibility. Not applicable here (Terraform v1.14.8 installed).
+**Alternative**: Skip locking entirely (omit `dynamodb_table`) -- acceptable for solo developer demos but NOT for team environments.
 
 ## Artifact Bucket: force_destroy Enabled
 

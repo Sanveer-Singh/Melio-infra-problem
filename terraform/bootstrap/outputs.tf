@@ -18,6 +18,11 @@ output "artifact_bucket_arn" {
   value       = aws_s3_bucket.artifacts.arn
 }
 
+output "lock_table_name" {
+  description = "Name of the DynamoDB table used for Terraform state locking"
+  value       = aws_dynamodb_table.terraform_locks.name
+}
+
 output "region" {
   description = "AWS region where bootstrap resources are deployed"
   value       = var.region
