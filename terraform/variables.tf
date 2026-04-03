@@ -63,3 +63,14 @@ variable "ssh_cidr" {
     error_message = "ssh_cidr must be a valid CIDR block or empty string."
   }
 }
+
+variable "artifact_bucket_arn" {
+  description = "ARN of the S3 artifact bucket (from bootstrap output)"
+  type        = string
+}
+
+variable "newsfeed_service_token" {
+  description = "Authentication token for the newsfeed service (pass via -var or TF_VAR_, never in tfvars)"
+  type        = string
+  sensitive   = true
+}

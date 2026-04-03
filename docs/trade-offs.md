@@ -64,3 +64,25 @@ Each decision follows the format: **Decision** / Options Considered / Chosen / R
 <!-- Options: HTTP only vs HTTPS with ACM -->
 <!-- Chosen: HTTP only -->
 <!-- Rationale: Sufficient for dev/test verification; TLS documented as future work -->
+
+## SSM SecureString: Default AWS Managed KMS Key
+
+**Decision**: Use default `alias/aws/ssm` key for SSM SecureString parameter.
+
+**Options considered**:
+- Default AWS managed key (chosen)
+- Customer-managed KMS key (more control over rotation/auditing)
+
+**Chosen**: Default AWS managed key.
+
+**Rationale**:
+- Avoids creating and managing a KMS key resource
+- No extra `kms:Decrypt` permission needed in the IAM policy -- instances can decrypt with just `ssm:GetParameter`
+- Trade-off: less control over key rotation schedule and access auditing
+- Acceptable for a time-boxed demo; customer-managed KMS documented as future improvement
+
+## IAM Inline Policy vs Managed Policy
+
+**Decision**: Use `aws_iam_role_policy` (inline) instead of `aws_iam_policy` + `aws_iam_role_policy_attachment`.
+
+**Rationale**: The permissions policy is specific to the app instance role and won't be reused across roles. Inline policy simplifies the module (fewer resources) and the policy lifecycle is tied to the role. For production with multiple roles sharing policies, managed policies would be preferred.

@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: phase-3-security
     content: "Phase 3: Security groups (ALB, frontend, backend, SSH) + IAM roles/policies + SSM parameter for token"
-    status: pending
+    status: completed
   - id: phase-4-compute
     content: "Phase 4: Compute module -- 3 EC2 instances (t3.small, AL2023, all in subnet-a), user data with JVM heap flags, nginx, systemd"
     status: pending

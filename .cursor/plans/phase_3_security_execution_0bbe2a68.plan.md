@@ -4,22 +4,22 @@ overview: "Comprehensive execution plan for Phase 3 of the Melio IaC assessment:
 todos:
   - id: preflight-validate
     content: "Step 3.0: Pre-flight validation of Phases 1+2 outputs (VPC ID output, root module scaffolding, terraform validate) + create feature/phase-3-security-iam branch"
-    status: pending
+    status: completed
   - id: security-variables
     content: "Step 3.1: Write terraform/modules/security/variables.tf (vpc_id, name_prefix, artifact_bucket_arn, newsfeed_service_token, ssh_cidr)"
-    status: pending
+    status: completed
   - id: security-main
     content: "Step 3.2: Write terraform/modules/security/main.tf -- 3 SGs with standalone rules, IAM role + inline policy + instance profile, SSM parameter"
-    status: pending
+    status: completed
   - id: security-outputs
     content: "Step 3.3: Write terraform/modules/security/outputs.tf (SG IDs, instance_profile_name, iam_role_arn, ssm_parameter_name/arn)"
-    status: pending
+    status: completed
   - id: root-wiring
     content: "Step 3.4: Wire security module in root main.tf, add artifact_bucket_arn + newsfeed_service_token vars, add outputs, update tfvars.example"
-    status: pending
+    status: completed
   - id: fmt-validate
     content: "Step 3.5: terraform fmt -recursive, terraform validate, lint check"
-    status: pending
+    status: completed
   - id: commit
     content: "Step 3.6: Commit with message 'feat: add security groups, IAM roles, and SSM secret'"
     status: pending

@@ -32,6 +32,11 @@ Each module directory contains: `main.tf`, `variables.tf`, `outputs.tf`
 - All identifiers use `snake_case`
 - Resource names prefixed with `local.name_prefix` (`"${var.project_name}-${var.environment}"`)
 
+## Data Sources (Provider 6.x)
+- `data.aws_region.current.name` is **deprecated** -- use `data.aws_region.current.region` instead
+- `inline_policy` argument on `aws_iam_role` is **deprecated** -- use `aws_iam_role_policy` resource instead
+- Security group rules: use `aws_vpc_security_group_ingress_rule` / `aws_vpc_security_group_egress_rule` standalone resources (not inline `ingress`/`egress` blocks)
+
 ## AMIs
 - Never hardcode AMI IDs -- always use `aws_ami` data source with `owners = ["amazon"]` filter
 
