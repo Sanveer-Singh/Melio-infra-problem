@@ -32,7 +32,7 @@ isProject: false
 
 Phase 3 depends on outputs from Phases 1 and 2. The validation step (3.0) confirms these exist before writing any security code.
 
-- **Phase 1 complete**: Bootstrap applied in af-south-1 -- S3 state bucket, DynamoDB lock table, S3 artifact bucket exist
+- **Phase 1 complete**: Bootstrap applied in af-south-1 -- S3 state bucket (native locking via `use_lockfile`), S3 artifact bucket exist
 - **Phase 2 complete**: Networking module implemented and wired -- VPC, 2 public subnets, IGW, route tables; `module.networking.vpc_id` is a valid output
 - **Root scaffolding**: `providers.tf`, `backend.tf`, `variables.tf`, `locals.tf` populated (Phase 2 deliverables)
 - **Terraform init**: `terraform init` succeeds in `terraform/` directory

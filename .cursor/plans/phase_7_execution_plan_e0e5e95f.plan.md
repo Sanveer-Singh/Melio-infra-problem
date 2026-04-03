@@ -56,17 +56,17 @@ Before any terraform operations, audit every module for correctness and alignmen
 
 - **S3 state bucket**: versioned, encrypted (SSE-S3 or KMS), `aws_s3_bucket_public_access_block` set, `prevent_destroy = true`, and critically: **`force_destroy = true`** (required for teardown -- if missing, the teardown script must be adapted to empty buckets via AWS CLI)
 - **S3 artifact bucket**: versioned, encrypted, `force_destroy = true`
-- **DynamoDB lock table**: PAY_PER_REQUEST, hash key `LockID` (type `S`)
+- **No DynamoDB**: Native S3 locking (`use_lockfile = true`) is used -- no lock table resource
 - **Provider**: `profile = var.aws_profile`, `region = var.region` (af-south-1), version `~> 6.0`
 - **Local state**: bootstrap must NOT have a backend block (uses local state)
-- **Outputs**: `state_bucket_name`, `artifact_bucket_name`, `dynamodb_table_name` (needed by teardown script)
+- **Outputs**: `state_bucket_name`, `artifact_bucket_name`, `artifact_bucket_arn`, `state_bucket_arn`, `region` (needed by teardown script and Phase 2 backend config)
 
 **Flag**: If `force_destroy = true` is NOT set on S3 buckets, the teardown script must include AWS CLI bucket-emptying logic as a fallback (see Step 7.4).
 
 ### 7.0.2 Root Module Audit ([`terraform/`](terraform/))
 
 - [`providers.tf`](terraform/providers.tf): AWS provider `~> 6.0`, `required_version = ">= 1.9"`, `profile = var.aws_profile`, `region = var.region`, `default_tags` block with Project/Environment/ManagedBy
-- [`backend.tf`](terraform/backend.tf): S3 backend pointing to state bucket in af-south-1, `dynamodb_table` set, `encrypt = true`
+- [`backend.tf`](terraform/backend.tf): S3 backend pointing to state bucket in af-south-1, `use_lockfile = true`, `encrypt = true`
 - [`variables.tf`](terraform/variables.tf): `region` (default af-south-1 with validation), `project_name`, `environment`, `instance_type` (default t3.small), `aws_profile`, `ssh_cidr` (optional)
 - [`locals.tf`](terraform/locals.tf): `name_prefix = "${var.project_name}-${var.environment}"`
 - [`main.tf`](terraform/main.tf): all 4 modules wired (networking, security, compute, alb) with correct inter-module references
@@ -241,7 +241,7 @@ ssh -i <key> ec2-user@<instance-ip> "sudo cat /var/log/cloud-init-output.log"
 - Verify all resources destroyed
 - Check AWS Console (or CLI) for any lingering resources tagged `ManagedBy=terraform`
 - Verify S3 buckets no longer exist
-- Verify DynamoDB table no longer exists
+- Verify no `.tflock` files remain in state bucket (should be auto-cleaned)
 
 ---
 
@@ -258,7 +258,7 @@ ssh -i <key> ec2-user@<instance-ip> "sudo cat /var/log/cloud-init-output.log"
 These Phase 1-6 design decisions directly impact Phase 7. If any are not met, the teardown script requires adaptation:
 
 - **Phase 1**: Bootstrap S3 buckets MUST have `force_destroy = true`. Without it, `terraform destroy` fails with "BucketNotEmpty" on versioned buckets. The teardown script includes a fallback (AWS CLI emptying) but `force_destroy` is strongly preferred.
-- **Phase 1**: Bootstrap MUST export outputs (`state_bucket_name`, `artifact_bucket_name`, `dynamodb_table_name`) for the teardown script's cleanup verification.
+- **Phase 1**: Bootstrap MUST export outputs (`state_bucket_name`, `artifact_bucket_name`, `state_bucket_arn`, `artifact_bucket_arn`) for the teardown script's cleanup verification.
 - **Phase 1**: State bucket MUST have `prevent_destroy = true` (the teardown script is designed to flip this via sed).
 - **Phase 1**: Bootstrap uses **local state** (no backend block) -- its `terraform.tfstate` lives on disk in `terraform/bootstrap/`. This file must exist for teardown.
 - **Phase 4**: User data scripts MUST use `set -euxo pipefail` -- without this, cloud-init failures are silent and validation debugging becomes very difficult.

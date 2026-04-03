@@ -2,42 +2,45 @@
 name: Phase 1 Bootstrap Build
 overview: "Phase 1 execution plan for the Melio IaC assessment: bootstrap remote state (S3 with native locking) + artifact bucket in af-south-1, create Docker-based build pipeline for Clojure JARs, and upload artifacts to S3."
 todos:
+  - id: prereq-terraform
+    content: "Step 0: BLOCKER RESOLVED - Terraform v1.14.8 available via WinGet. terraform fmt/init/validate all pass."
+    status: completed
   - id: create-branch
     content: "Step 1.1: Create feature branch feature/phase-1-bootstrap-build from Feature/Iac-implementation"
     status: pending
   - id: bootstrap-providers
     content: "Step 1.2: Create terraform/bootstrap/providers.tf with terraform block + AWS provider config"
-    status: pending
+    status: completed
   - id: bootstrap-main
-    content: "Step 1.3: Populate terraform/bootstrap/main.tf with S3 state bucket + S3 artifact bucket (9 resources)"
-    status: pending
+    content: "Step 1.3: Populate terraform/bootstrap/main.tf with S3 state bucket + S3 artifact bucket (8 resources + 1 data source)"
+    status: completed
   - id: bootstrap-vars
     content: "Step 1.4: Populate terraform/bootstrap/variables.tf with region, project_name, environment, aws_profile"
-    status: pending
+    status: completed
   - id: bootstrap-outputs
     content: "Step 1.5: Populate terraform/bootstrap/outputs.tf with bucket names and ARNs"
-    status: pending
+    status: completed
   - id: dockerfile
     content: "Step 1.6: Create scripts/Dockerfile.build with clojure:temurin-17-lein base image"
-    status: pending
+    status: completed
   - id: build-docker
     content: "Step 1.7: Create scripts/build-docker.sh for Docker-based build orchestration"
-    status: pending
+    status: completed
   - id: build-local
     content: "Step 1.8: Create scripts/build-local.sh as local build fallback"
-    status: pending
+    status: completed
   - id: deploy-script
     content: "Step 1.9: Create scripts/deploy.sh for S3 artifact upload"
-    status: pending
+    status: completed
   - id: dockerignore
     content: "Step 1.10: Create .dockerignore to exclude non-source files"
-    status: pending
+    status: completed
   - id: gitattributes
     content: "Step 1.10b: Create .gitattributes for LF line endings on scripts"
-    status: pending
+    status: completed
   - id: tradeoffs-update
     content: "Step 1.11: Update docs/trade-offs.md with S3 native locking decision"
-    status: pending
+    status: completed
   - id: bootstrap-apply
     content: "Step 1.12: Manual - terraform init/plan/apply in bootstrap/"
     status: pending
@@ -52,23 +55,41 @@ isProject: false
 
 # Phase 1: Bootstrap and Build Artifacts -- Execution Plan
 
+## Prerequisites and Blockers
+
+> **BLOCKER**: `terraform` is not in PATH on this machine. The Phase 0 validation report marked
+> Terraform installation as completed, but `terraform version` returns "command not found" in the
+> current shell. Before any Terraform steps can run, ensure Terraform >= 1.9 is installed and
+> accessible from Git Bash / WSL / your terminal of choice.
+>
+> **Verification**: `terraform version` must return `>= 1.9.0` (we target 1.10+ for `use_lockfile`).
+
+Phase 0 scaffold files are confirmed present on `Feature/Iac-implementation`:
+- `terraform/bootstrap/` with empty `main.tf`, `variables.tf`, `outputs.tf`
+- `terraform/` root with empty `providers.tf`, `backend.tf`, `main.tf`, `variables.tf`, `locals.tf`, `outputs.tf`
+- `terraform/modules/` with `networking/`, `security/`, `compute/`, `alb/` skeletons
+- `scripts/` directory (empty, `.gitkeep` present)
+- `docs/` with template files
+
 ## Research Findings That Change the Master Plan
 
-Three corrections from live research (Perplexity MCP + Context7 MCP, April 2026):
+Four corrections from live research (Perplexity MCP + Context7 MCP, April 2026):
 
-1. **No DynamoDB needed**: Terraform 1.9+ (installed: v1.14.8) supports `use_lockfile = true` for native S3 state locking. DynamoDB table is dropped from bootstrap. Documented as a pre-1.9 alternative in `docs/trade-offs.md`.
-2. **Docker image tag correction**: `clojure:temurin-17-lein-2.12.0` is NOT a valid Docker Hub tag. Correct tag: `clojure:temurin-17-lein` (ships latest Leiningen + Temurin JDK 17).
-3. **S3 bucket resources**: AWS provider 6.x still uses separate resources for versioning (`aws_s3_bucket_versioning`), encryption (`aws_s3_bucket_server_side_encryption_configuration`), and public access (`aws_s3_bucket_public_access_block`). No consolidation from 5.x.
+1. **No DynamoDB needed**: Terraform 1.10+ (GA) supports `use_lockfile = true` for native S3 state locking via S3 conditional writes. DynamoDB locking is **deprecated** and will be removed in a future Terraform release. DynamoDB table is dropped from bootstrap entirely. Documented as a legacy alternative in `docs/trade-offs.md`.
+2. **Docker image tag correction**: `clojure:temurin-17-lein-2.12.0` is NOT a valid Docker Hub tag. Correct tag: `clojure:temurin-17-lein` (resolves to Lein 2.12.0 on JDK 17, verified April 2026).
+3. **S3 bucket resources**: AWS provider 6.x still uses separate resources for versioning (`aws_s3_bucket_versioning`), encryption (`aws_s3_bucket_server_side_encryption_configuration`), and public access (`aws_s3_bucket_public_access_block`). No consolidation from 5.x. Confirmed via Context7 and Perplexity.
+4. **AWS Provider 6.x region feature**: Regional resources now support an inline `region` argument, eliminating provider aliases for cross-region work. Not relevant for Phase 1 (single region) but noted for awareness.
 
 ## Gaps and Flaws Identified in Master Plan Phase 1
 
 - **Missing `providers.tf` in bootstrap/**: Bootstrap is a standalone root module; it needs its own `terraform {}` block with `required_providers` and provider config. Phase 0 validation (Observation D) flagged this.
 - **Bootstrap state is LOCAL**: The state bucket doesn't exist yet when bootstrap runs. Bootstrap's own state lives in `terraform/bootstrap/terraform.tfstate` (gitignored). This must be documented -- losing this file before teardown means manual cleanup.
 - **S3 bucket naming uniqueness**: S3 names are globally unique. Plan uses `${var.project_name}-${var.environment}-*` but should incorporate AWS account ID via `data.aws_caller_identity.current.account_id` for safety.
-- **`scripts/.gitkeep` missing**: Phase 0 exploration shows `scripts/` directory exists but has no files. Git won't track it on clone without a sentinel. Needs `.gitkeep` or we delete it and let Phase 1 scripts create the directory implicitly.
+- **`scripts/` directory**: Phase 0 created `scripts/` with `.gitkeep`. Phase 1 scripts will populate this directory -- `.gitkeep` can be removed once real files exist.
 - **Artifact bucket access policy**: The master plan's IAM policy (Phase 3) grants `s3:GetObject` on the artifact bucket. But `deploy.sh` needs `s3:PutObject`. The deploying user (charteracademy profile) likely has broad S3 access, but we should document this assumption.
-- **Windows compatibility**: User is on Windows 10. Bash scripts run via Git Bash or WSL. Docker Desktop handles Linux containers. The `build-docker.sh` script must use portable paths (no hardcoded `/` vs `\`).
+- **Windows compatibility**: User is on Windows 10. Bash scripts run via Git Bash or WSL. Docker Desktop handles Linux containers. The `build-docker.sh` script must use portable paths (no hardcoded `/` vs `\`). `.gitattributes` enforces LF line endings on `*.sh` files.
 - **Makefile artifact names**: The Makefile produces `build/front-end.jar`, `build/quotes.jar`, `build/newsfeed.jar`, `build/static.tgz`. Deploy script must match these exact names.
+- **Master plan DynamoDB references**: The master plan diagram, cost table, module structure comments, and several text sections still reference DynamoDB. These are updated as part of this phase (see "Downstream Updates" section).
 
 ## Architecture (Phase 1 Scope Only)
 
@@ -141,7 +162,7 @@ This file is required because bootstrap is a separate Terraform root module. It 
 - `aws_s3_bucket_server_side_encryption_configuration.artifacts` -- `sse_algorithm = "AES256"`
 - `aws_s3_bucket_public_access_block.artifacts` -- all four flags `true`
 
-Total resources: **9** (2 buckets + 2 versioning + 2 encryption + 2 public access block + 1 data source)
+Total managed resources: **8** (2 buckets + 2 versioning + 2 encryption + 2 public access block) plus **1 data source** (`aws_caller_identity`)
 
 ---
 
@@ -180,12 +201,13 @@ RUN make libs && make clean all
 ```
 
 Key design decisions:
-- Tag `clojure:temurin-17-lein` (NOT `clojure:temurin-17-lein-2.12.0` -- invalid tag per Docker Hub research)
+- Tag `clojure:temurin-17-lein` resolves to Lein 2.12.0 on JDK 17 (verified via `docker run --rm clojure:temurin-17-lein lein version` on April 2026).
 - `COPY . .` copies entire monorepo (common-utils, front-end, quotes, newsfeed, Makefile)
 - `make libs` first installs `common-utils` to Maven local repo (`~/.m2`) inside the container
 - `make clean all` builds all 3 uberjars + `static.tgz`
 - No `CMD` -- this is a build-only image, artifacts extracted via `docker cp`
 - Add `.dockerignore` to exclude `.git/`, `.terraform/`, `build/`, `docs/`, `.cursor/` from the build context
+- Clojure 1.8 (used by this project) runs on JDK 17 without issues -- confirmed via research
 
 ---
 
@@ -320,6 +342,27 @@ Pre-commit checks:
 - `terraform validate` in `terraform/bootstrap/` -- syntax
 - No `.tfstate` files staged
 - No credentials in any file
+
+---
+
+## Downstream Updates (performed alongside Phase 1)
+
+These updates propagate Phase 1 research findings to other plans, rules, and docs:
+
+1. **Master plan** (`melio_iac_assessment_plan_349f73ef.plan.md`):
+   - Remove DynamoDB from architecture diagram, cost table, module structure, risk table
+   - Fix Docker tag from `clojure:temurin-17-lein-2.12.0` to `clojure:temurin-17-lein`
+   - Update "Remote state from day 1" decision to reference S3 native locking
+   - Update bootstrap description to say "S3 state bucket + S3 artifact bucket" (no DynamoDB)
+
+2. **`terraform.mdc` rule**:
+   - Change "S3 backend (versioned, encrypted) + DynamoDB lock table" to "S3 backend (versioned, encrypted) with native S3 locking (`use_lockfile = true`)"
+
+3. **Phase 2 plan** (`phase_2_networking_execution_790a569f.plan.md`):
+   - Update backend.tf step to remove `dynamodb_table` references, add `use_lockfile = true`
+
+4. **`docs/trade-offs.md`**:
+   - Fill in "Remote State in af-south-1" section with S3 native locking decision and rationale
 
 ---
 

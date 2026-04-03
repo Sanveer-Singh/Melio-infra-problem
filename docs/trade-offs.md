@@ -30,9 +30,28 @@ Each decision follows the format: **Decision** / Options Considered / Chosen / R
 
 ## Remote State in af-south-1 (vs us-east-1)
 
-<!-- Options: State bucket in af-south-1 vs us-east-1 -->
-<!-- Chosen: af-south-1 -->
-<!-- Rationale: Simpler (everything one region); if region has issues, state is inaccessible -->
+**Decision**: S3 state bucket in af-south-1 with native S3 locking (`use_lockfile = true`).
+
+**Options considered**:
+- S3 + DynamoDB lock table (legacy Terraform pattern, pre-1.10)
+- S3 with native locking in af-south-1 (chosen)
+- S3 with native locking in us-east-1 (cross-region state)
+
+**Chosen**: S3 in af-south-1 with `use_lockfile = true` (native S3 locking).
+
+**Rationale**:
+- Terraform 1.10+ supports native S3 state locking via S3 conditional writes -- DynamoDB is deprecated and will be removed in a future Terraform release
+- Fewer resources to manage (no DynamoDB table), lower cost, simpler architecture
+- Keeping state in the same region as infrastructure simplifies operations
+- Trade-off: if af-south-1 has an outage, both infra and state are inaccessible. For a single-region dev environment, this is acceptable.
+
+**Alternative**: DynamoDB lock table -- only needed for teams on Terraform < 1.10 or needing cross-tool lock visibility. Not applicable here (Terraform v1.14.8 installed).
+
+## Artifact Bucket: force_destroy Enabled
+
+**Decision**: `force_destroy = true` on the S3 artifact bucket.
+
+**Rationale**: Allows `terraform destroy` to succeed even when the bucket contains uploaded JARs and static assets. Without this, teardown would require manual bucket emptying. The state bucket intentionally omits this (`prevent_destroy = true`) to protect Terraform state from accidental deletion.
 
 ## t3.small Instance Type
 

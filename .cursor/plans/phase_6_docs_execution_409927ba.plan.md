@@ -46,7 +46,7 @@ Before writing docs, validate that the infrastructure code matches the master pl
 
 **Audit checklist:**
 
-- **Bootstrap** ([terraform/bootstrap/main.tf](terraform/bootstrap/main.tf)): S3 state bucket (versioned, encrypted), DynamoDB lock table, S3 artifact bucket -- all in af-south-1
+- **Bootstrap** ([terraform/bootstrap/main.tf](terraform/bootstrap/main.tf)): S3 state bucket (versioned, encrypted, native S3 locking), S3 artifact bucket -- all in af-south-1
 - **Root Terraform**: [terraform/providers.tf](terraform/providers.tf) has AWS `~> 6.0` with `default_tags`, [terraform/backend.tf](terraform/backend.tf) points to S3 state bucket, [terraform/variables.tf](terraform/variables.tf) has `region`, `project_name`, `environment`, `instance_type`, `aws_profile`, `ssh_cidr`
 - **Networking** ([terraform/modules/networking/](terraform/modules/networking/)): VPC `10.0.0.0/16`, 2 public subnets (af-south-1a `10.0.1.0/24`, af-south-1b `10.0.2.0/24`), IGW, route tables
 - **Security** ([terraform/modules/security/](terraform/modules/security/)): 4 SGs (alb, frontend, backend, ssh), IAM role with S3+SSM policies, instance profile, SSM parameter

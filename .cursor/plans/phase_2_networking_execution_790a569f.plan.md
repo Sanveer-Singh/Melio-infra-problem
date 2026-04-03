@@ -9,7 +9,7 @@ todos:
     content: "Step 2.1: Populate terraform/providers.tf with required_version, required_providers, provider block with default_tags"
     status: pending
   - id: backend
-    content: "Step 2.2: Populate terraform/backend.tf with S3 backend config (hardcoded bucket/table names matching Phase 1 convention)"
+    content: "Step 2.2: Populate terraform/backend.tf with S3 backend config (hardcoded bucket name, use_lockfile=true, no DynamoDB)"
     status: pending
   - id: variables
     content: "Step 2.3: Populate terraform/variables.tf with ALL root variables (region, project_name, environment, aws_profile, instance_type, ssh_cidr)"
@@ -44,10 +44,10 @@ isProject: false
 
 Phase 2's code can be **written and validated** without Phase 1 being applied, using `terraform init -backend=false`. However, full `terraform init` (with backend) requires:
 
-- S3 state bucket exists (expected name: `melio-devops-dev-terraform-state`)
-- DynamoDB lock table exists (expected name: `melio-devops-dev-terraform-locks`)
-- Both in **af-south-1** per the [main plan](.cursor/plans/melio_iac_assessment_plan_349f73ef.plan.md) lines 197-198
-- Terraform >= 1.9 installed (confirmed: v1.14.8 in Phase 0)
+- S3 state bucket exists (expected name: `melio-devops-dev-tfstate-<account-id>`, incorporating AWS account ID per Phase 1 convention)
+- No DynamoDB lock table needed -- Phase 1 uses S3 native locking (`use_lockfile = true`)
+- State bucket in **af-south-1** per the [main plan](.cursor/plans/melio_iac_assessment_plan_349f73ef.plan.md)
+- Terraform >= 1.10 installed for `use_lockfile` support (v1.14.8 confirmed)
 
 **Assumption**: Bootstrap bucket/table names follow the `${project_name}-${environment}-*` convention. If Phase 1 uses different names, `backend.tf` values must be updated to match.
 
@@ -70,7 +70,7 @@ Phase 2's code can be **written and validated** without Phase 1 being applied, u
 - **No breaking changes** in AWS provider 6.x for `aws_vpc`, `aws_subnet`, `aws_internet_gateway`, `aws_route_table`, `aws_route_table_association` -- syntax is identical to provider 5.x.
 - **`enable_dns_support` and `enable_dns_hostnames`** remain valid on `aws_vpc` in provider 6.x (both default to `true` but should be explicit for clarity).
 - **`default_tags` block** syntax confirmed: nested under `provider "aws"`, not under `terraform {}`. Resource-level `Name` tags merge with provider-level default tags.
-- **S3 backend** in Terraform 1.10+ supports `use_lockfile = true` for native S3 locking (no DynamoDB needed), but since we target `>= 1.9` and the main plan specifies DynamoDB, we stick with `dynamodb_table`.
+- **S3 backend** in Terraform 1.10+ supports `use_lockfile = true` for native S3 locking (no DynamoDB needed). Phase 1 research confirmed DynamoDB locking is deprecated. We use `use_lockfile = true` and drop `dynamodb_table` entirely.
 - **`terraform {}` blocks can be split across files** (providers.tf + backend.tf) -- Terraform merges them. No conflicts as long as no setting is duplicated.
 
 ### Discrepancy Between Plans
@@ -116,14 +116,16 @@ Content:
 Content:
 - `terraform { backend "s3" { ... } }` block
 - Hardcoded values (Terraform backend blocks do NOT support variable interpolation):
-  - `bucket = "melio-devops-dev-terraform-state"`
+  - `bucket = "melio-devops-dev-tfstate-<account-id>"` (actual account ID filled after Phase 1 bootstrap apply)
   - `key = "infrastructure/terraform.tfstate"`
   - `region = "af-south-1"`
   - `encrypt = true`
-  - `dynamodb_table = "melio-devops-dev-terraform-locks"`
+  - `use_lockfile = true` (native S3 locking, no DynamoDB needed)
   - `profile = "charteracademy"`
 
 **Rationale for hardcoded values**: Terraform backend configuration is a known limitation -- it only accepts literals or `-backend-config` CLI flags. Hardcoding with clear naming matching the Phase 1 bootstrap convention is simplest for a demo. A comment in the file documents this constraint and references the bootstrap module.
+
+**Note**: The bucket name includes the AWS account ID (appended by Phase 1 bootstrap via `data.aws_caller_identity`). After `terraform apply` in bootstrap, run `terraform output state_bucket_name` to get the exact value for this field.
 
 ### Step 2.3: Root `variables.tf` (~3 min)
 
@@ -295,7 +297,7 @@ Phase 2 creates the following Terraform-managed AWS resources (expected `terrafo
 
 ## Potential Issues to Watch For
 
-- **Backend bucket name mismatch**: If Phase 1 bootstrap names the state bucket differently than `melio-devops-dev-terraform-state`, `terraform init` will fail. Coordinate naming with Phase 1.
+- **Backend bucket name mismatch**: Phase 1 bootstrap includes the AWS account ID in bucket names (`melio-devops-dev-tfstate-<account-id>`). After bootstrap apply, run `terraform output state_bucket_name` to get the exact name for `backend.tf`. If the name doesn't match, `terraform init` will fail.
 - **`terraform init` vs `-backend=false`**: If the backend bucket doesn't exist yet, `terraform init` (without the flag) fails. Use `-backend=false` to still validate and generate the lock file.
 - **Provider download in af-south-1**: Provider binaries are downloaded from HashiCorp's CDN, not from the AWS region. No issue, but may be slightly slower from Cape Town.
 - **`default_tags` and `Name` tag interaction**: Resources get both default tags (Project, Environment, ManagedBy) AND explicit Name tags. These merge correctly -- `tags_all` contains both. No conflicts.
@@ -315,6 +317,6 @@ Phase 2 creates the following Terraform-managed AWS resources (expected `terrafo
 ## Tools and MCPs Used
 
 - **Context7 MCP** (`resolve-library-id`, `query-docs`): Retrieved AWS provider 6.x documentation for `aws_vpc`, `aws_subnet`, `aws_internet_gateway`, `aws_route_table`, `aws_route_table_association`, `default_tags` configuration, and provider block syntax
-- **Perplexity MCP** (`perplexity_ask`): Validated no breaking changes in provider 6.x for VPC/networking resources, confirmed `enable_dns_support`/`enable_dns_hostnames` still valid, verified S3 backend syntax including `dynamodb_table` and `use_lockfile` (1.10+), validated `terraform {}` block merging across files
+- **Perplexity MCP** (`perplexity_ask`): Validated no breaking changes in provider 6.x for VPC/networking resources, confirmed `enable_dns_support`/`enable_dns_hostnames` still valid, verified S3 backend syntax with `use_lockfile = true` (DynamoDB deprecated), validated `terraform {}` block merging across files
 - **Codebase exploration** (Task subagents): Full inventory of current file states, git history, Phase 1 status verification
 - **Built-in tools**: Read (plans, rules, tfvars.example), Glob (MCP schemas)

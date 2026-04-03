@@ -6,8 +6,8 @@ todos:
     content: "Phase 0: Validate af-south-1 access on charteracademy profile, create project scaffolding, .cursor/rules, docs/ templates, .gitignore, terraform/ skeleton"
     status: completed
   - id: phase-1-bootstrap
-    content: "Phase 1: Bootstrap remote state (S3+DynamoDB) AND S3 artifact bucket in af-south-1, then build + upload JARs"
-    status: pending
+    content: "Phase 1: Bootstrap remote state (S3 with native locking) AND S3 artifact bucket in af-south-1, then build + upload JARs"
+    status: in_progress
   - id: phase-2-networking
     content: "Phase 2: Networking module (VPC, 2 public subnets af-south-1a/b, IGW, routes), providers.tf (~> 6.0), backend.tf"
     status: pending
@@ -50,8 +50,7 @@ graph TB
         end
         ALB["ALB :80\n2-AZ required"]
         S3Art["S3 Artifact Bucket\nJARs + static.tgz"]
-        S3State["S3 State Bucket"]
-        DDB["DynamoDB Lock Table"]
+        S3State["S3 State Bucket\n(use_lockfile=true)"]
         SSM["SSM Parameter Store\nNEWSFEED_SERVICE_TOKEN"]
         IGW["Internet Gateway"]
     end
@@ -102,7 +101,7 @@ The assessment explicitly asks candidates to push back on underspecified stories
 - **S3 artifact bucket in bootstrap**: Artifact bucket created during bootstrap (before `terraform apply`) so EC2 user data can pull JARs immediately at boot. Solves the sequencing problem of EC2s booting before artifacts exist.
 - **SSM SecureString for token**: `NEWSFEED_SERVICE_TOKEN` stored in SSM Parameter Store, read at boot via IAM policy. Never in version control or tfvars. Note: the token is hardcoded in `newsfeed/core.clj` source -- SSM demonstrates the correct production pattern even though the value is not truly secret here.
 - **systemd services**: Each JAR runs as a systemd unit -- auto-restart on failure, proper logging to journald, clean shutdown. JVM launched with `-Xmx512m -XX:+UseSerialGC` to bound memory.
-- **Remote state from day 1**: S3 (versioned, encrypted) + DynamoDB lock in af-south-1. Signals state-management hygiene even for a single deployment.
+- **Remote state from day 1**: S3 (versioned, encrypted) with native S3 locking (`use_lockfile = true`) in af-south-1. DynamoDB lock table is no longer needed -- Terraform 1.10+ uses S3 conditional writes for atomic locking. Signals state-management hygiene even for a single deployment.
 - **Terraform >= 1.9, AWS provider ~> 6.0**: Pinned to current stable versions (Terraform v1.14.8, provider v6.39.0 as of April 2026). Avoids drift from unversioned configs.
 
 ## Terraform Module Structure
@@ -126,20 +125,20 @@ terraform/
         newsfeed.sh.tpl
         nginx.conf.tpl
     alb/                    # ALB, target group, listener, health checks
-  bootstrap/                # One-time: S3 state bucket + DynamoDB lock + S3 artifact bucket
+  bootstrap/                # One-time: S3 state bucket (native locking) + S3 artifact bucket
     main.tf
     variables.tf
     outputs.tf
 scripts/
   build-local.sh            # make libs && make clean all (requires Java + Lein)
   build-docker.sh           # Docker-based build (primary, only needs Docker)
-  Dockerfile.build          # Clojure/Lein build image (clojure:temurin-17-lein-2.12.0)
+  Dockerfile.build          # Clojure/Lein build image (clojure:temurin-17-lein)
   deploy.sh                 # Upload artifacts to S3 artifact bucket
   teardown.sh               # terraform destroy + bootstrap destroy + verify cleanup
 ```
 
 **Execution flow** (solves artifact sequencing):
-1. `bootstrap apply` -- creates S3 state bucket, DynamoDB lock, and S3 artifact bucket
+1. `bootstrap apply` -- creates S3 state bucket (with native locking support) and S3 artifact bucket
 2. `build-docker.sh` -- builds JARs via Docker
 3. `deploy.sh` -- uploads JARs + static.tgz to artifact bucket (bucket already exists)
 4. `terraform apply` -- creates VPC, EC2s, ALB; EC2 user data pulls JARs from S3 at boot
@@ -194,9 +193,9 @@ All user data scripts begin with `#!/bin/bash` and `set -euxo pipefail` for fail
 - **Commit**: `chore: scaffold project structure, cursor rules, and docs templates`
 
 ### Phase 1: Bootstrap and Build Artifacts (~30 min)
-- `terraform/bootstrap/` in **af-south-1**: S3 state bucket (versioned, encrypted) + DynamoDB lock table + **S3 artifact bucket** (versioned, private, encrypted)
+- `terraform/bootstrap/` in **af-south-1**: S3 state bucket (versioned, encrypted, native S3 locking via `use_lockfile = true`) + **S3 artifact bucket** (versioned, private, encrypted). No DynamoDB needed.
 - Apply bootstrap: `cd terraform/bootstrap && terraform init && terraform apply`
-- `scripts/Dockerfile.build` -- `FROM clojure:temurin-17-lein-2.12.0`, copies repo, runs `make libs && make clean all`
+- `scripts/Dockerfile.build` -- `FROM clojure:temurin-17-lein` (resolves to Lein 2.12.0, JDK 17), copies repo, runs `make libs && make clean all`
 - `scripts/build-docker.sh` -- builds Docker image, extracts `build/*.jar` + `build/static.tgz` to host
 - `scripts/build-local.sh` -- fallback: **must** run `make libs && make clean all` (not just `make all` -- Makefile `all` target does NOT invoke `libs`)
 - `scripts/deploy.sh` -- `aws s3 cp build/*.jar s3://<artifact-bucket>/` + `aws s3 cp build/static.tgz s3://<artifact-bucket>/`
@@ -284,9 +283,8 @@ All user data scripts begin with `#!/bin/bash` and `set -euxo pipefail` for fail
 |---|---|---|
 | 3 x t3.small | ~$0.0264/hr each | ~$0.16 |
 | ALB | ~$0.027/hr | ~$0.07 |
-| S3 | negligible | ~$0.00 |
+| S3 (state + artifacts) | negligible | ~$0.00 |
 | SSM | free tier | $0.00 |
-| DynamoDB | on-demand, minimal | ~$0.00 |
 | **Total** | | **~$0.23** |
 
 ## Additional Constraints and Guardrails
@@ -312,7 +310,7 @@ All user data scripts begin with `#!/bin/bash` and `set -euxo pipefail` for fail
 | Boot timing (frontend before backends) | First page load shows errors | `/ping` is independent of backends; browser refresh after 30-60s resolves. Acceptable for demo. |
 | Build fails (lein/Java issues) | No artifacts to deploy | Docker-based build as primary (isolated env); local build as fallback |
 | Over time budget (> 4 hours) | Incomplete submission | Time-box each phase; drop ALB if behind (use direct EC2 public IP) |
-| Terraform state corruption | Cannot manage infra | S3 versioning + DynamoDB locking |
+| Terraform state corruption | Cannot manage infra | S3 versioning + native S3 locking (`use_lockfile = true`) |
 | af-south-1 service quirks | Unexpected API errors | Region is configurable via `var.region`; switch to us-east-1 with a single variable change |
 
 ## Fallback: Simplified Single-Instance Approach
@@ -329,7 +327,7 @@ If behind on time after Phase 2 (networking), fall back to:
 - **af-south-1 RSS feed latency**: The newsfeed service fetches RSS from US-hosted sites (Reddit, HN, Martin Fowler, ThoughtWorks) with a 1s timeout in `newsfeed/api.clj`. Cape Town to US RTT is ~250-350ms, leaving minimal margin. Expect partial/empty newsfeed results. Document this; quotes page will always work.
 - **Boot timing**: Frontend may start before backends are ready. The `/ping` health check passes regardless of backend availability. First page load might show errors -- a browser refresh after 30-60s should resolve. Acceptable for demo scope.
 - **AL2023 package availability**: Amazon Corretto 17 via `dnf install -y java-17-amazon-corretto-headless`. Nginx via `dnf install -y nginx`. Both confirmed available in AL2023 default repos.
-- **Leiningen/Clojure compatibility**: Project uses Clojure 1.8 (compatible with Java 17). Docker build uses `clojure:temurin-17-lein-2.12.0` (latest lein). Clojure 1.8 runs on JDK 17 without known issues.
+- **Leiningen/Clojure compatibility**: Project uses Clojure 1.8 (compatible with Java 17). Docker build uses `clojure:temurin-17-lein` (Lein 2.12.0, verified April 2026). Clojure 1.8 runs on JDK 17 without known issues.
 - **SSM token is not truly secret**: The token `T1&eWbYXNWG1w1^YGKDPxAWJ@^et^&kX` is hardcoded in `newsfeed/core.clj` source. SSM demonstrates the correct production pattern for secrets management even though this specific value is already in VCS.
 - **Makefile `all` does NOT run `libs`**: The `common-utils` library must be installed via `make libs` before `make clean all`. Both build scripts enforce this ordering.
 
@@ -337,5 +335,6 @@ If behind on time after Phase 2 (networking), fall back to:
 
 ## Tools and Research Used
 
-- **Perplexity MCP**: Validated Terraform v1.14.8, AWS provider v6.39.0, af-south-1 opt-in/STS behavior, AL2023 nginx+Corretto availability, Clojure 1.8/Java 17 compatibility, Docker image tags (lein 2.12.0), t3.small memory, af-south-1 pricing
+- **Perplexity MCP**: Validated Terraform v1.14.8, AWS provider v6.39.0, af-south-1 opt-in/STS behavior, AL2023 nginx+Corretto availability, Clojure 1.8/Java 17 compatibility, Docker image tags (Lein 2.12.0 confirmed April 2026), t3.small memory, af-south-1 pricing, S3 native state locking (`use_lockfile = true`) -- DynamoDB deprecated
+- **Context7 MCP**: Verified AWS provider 6.x S3 resource patterns (`aws_s3_bucket`, `aws_s3_bucket_versioning`, `aws_s3_bucket_server_side_encryption_configuration`, `aws_s3_bucket_public_access_block` remain separate resources)
 - **Codebase exploration**: Full source review of all 3 services, Makefile, project.clj files, /ping endpoints, static assets, env var wiring

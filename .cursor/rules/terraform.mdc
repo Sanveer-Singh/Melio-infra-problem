@@ -8,7 +8,7 @@ alwaysApply: false
 # Terraform Conventions
 
 ## Version Constraints
-- Terraform: `required_version = ">= 1.9"`
+- Terraform: `required_version = ">= 1.10"`
 - AWS provider: `required_providers { aws = { source = "hashicorp/aws", version = "~> 6.0" } }`
 
 ## Provider Configuration
@@ -42,7 +42,8 @@ Each module directory contains: `main.tf`, `variables.tf`, `outputs.tf`
 - Mark with `sensitive = true`
 
 ## Remote State
-- S3 backend (versioned, encrypted) + DynamoDB lock table, both in af-south-1
+- S3 backend (versioned, encrypted) with native S3 locking (`use_lockfile = true`) in af-south-1
+- DynamoDB locking is deprecated (Terraform 1.10+) -- do NOT add `dynamodb_table` to backend config
 - `.terraform.lock.hcl` must always be committed to version control
 
 ## Pre-commit Checks
