@@ -33,3 +33,5 @@ Use conventional commits: `feat:`, `fix:`, `chore:`, `docs:`
 - Plans are version-controlled in `.cursor/plans/`
 - Full architecture plan: `.cursor/plans/melio_iac_assessment_plan_349f73ef.plan.md`
 - Phase execution plans: `.cursor/plans/phase_*_execution_*.plan.md`
+- Planning methodology documented in README.md "Planning Methodology" section
+- Plan files reference table in README.md lists all 15 plan files with purpose descriptions

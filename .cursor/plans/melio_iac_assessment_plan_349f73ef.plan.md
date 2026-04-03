@@ -22,7 +22,7 @@ todos:
     status: completed
   - id: phase-6-docs
     content: "Phase 6: Comprehensive README with story refinement, architecture diagram, future-work.md, trade-offs.md"
-    status: pending
+    status: completed
   - id: phase-7-validate
     content: "Phase 7: terraform plan -out=tfplan / apply, end-to-end validation, teardown script, verify cleanup"
     status: pending

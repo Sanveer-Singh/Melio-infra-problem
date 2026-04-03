@@ -4,25 +4,25 @@ overview: "Comprehensive execution plan for Phase 6 (Documentation and Future Wo
 todos:
   - id: create-branch
     content: Create feature/phase-6-docs branch from Feature/Iac-implementation (ensure Phases 1-5 complete)
-    status: pending
+    status: completed
   - id: audit-p1-p5
     content: "Audit Phases 1-5 implementation: verify all modules, scripts, outputs match master plan; document discrepancies"
-    status: pending
+    status: completed
   - id: write-readme
-    content: "Append infrastructure deployment sections to README.md (12 sections: story refinement, prerequisites, quick start, variables, architecture, secrets, verification, limitations, teardown, cost, further reading)"
-    status: pending
+    content: "Append infrastructure deployment sections to README.md (13 sections: story refinement, prerequisites, quick start, variables, architecture, secrets, verification, limitations, teardown, cost, planning methodology, plan files reference, further reading)"
+    status: completed
   - id: write-architecture
-    content: Replace all HTML comment placeholders in docs/architecture.md with full content (overview, comprehensive mermaid diagram, services, networking, security model, data flow, boot sequence)
-    status: pending
+    content: Replace all HTML comment placeholders in docs/architecture.md with full content (overview, comprehensive mermaid diagram, services, networking, security model, data flow, boot sequence, module structure)
+    status: completed
   - id: write-tradeoffs
-    content: Fill all 7 trade-off records in docs/trade-offs.md with structured decision records + add 2 new decisions (Docker build, nginx proxy)
-    status: pending
+    content: "Phases 1-5 already filled 17 trade-off records; added 2 new decisions (Docker build, nginx proxy) for 19 total"
+    status: completed
   - id: write-futurework
     content: Fill all 9 future-work items in docs/future-work.md with substantive descriptions, priority labels, and implementation notes
-    status: pending
+    status: completed
   - id: validate-commit
     content: Verify markdown rendering (mermaid, tables, links), run terraform fmt/validate if needed, commit with 'docs:' prefix, push branch
-    status: pending
+    status: completed
 isProject: false
 ---
 

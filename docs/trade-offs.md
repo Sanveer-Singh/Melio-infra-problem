@@ -8,7 +8,7 @@ Each decision follows the format: **Decision** / Options Considered / Chosen / R
 
 **Options**: af-south-1 (Cape Town) vs us-east-1 (Virginia)
 **Chosen**: af-south-1
-**Rationale**: Assessment requirement. RSS latency (~250-350ms to US) is a known limitation; the newsfeed service's hardcoded 1s timeout may cause partial results. Quotes page is unaffected.
+**Rationale**: Assessment requires actual tests, use developers existing account for speed. RSS latency (~250-350ms to US) is a known limitation; the newsfeed service's hardcoded 1s timeout may cause partial results. Quotes page is unaffected.
 
 ## Public Subnets for All Instances
 
@@ -150,3 +150,15 @@ Each decision follows the format: **Decision** / Options Considered / Chosen / R
 **Options**: Default IMDS (v1 + v2) vs enforced IMDSv2 (`http_tokens = "required"`)
 **Chosen**: Default (both v1 and v2 allowed)
 **Rationale**: Enforcing IMDSv2 is a security best practice that mitigates SSRF-based credential theft. However, for a time-boxed demo with no sensitive workloads, the default is acceptable. Production deployments should set `metadata_options { http_tokens = "required" }` on all EC2 instances.
+
+## Docker-based Build (Primary Build Method)
+
+**Options**: Local Java 17 + Leiningen install vs Docker-based build container
+**Chosen**: Docker as primary (`scripts/build-docker.sh`), local as fallback (`scripts/build-local.sh`)
+**Rationale**: Docker build uses `clojure:temurin-17-lein` image which bundles JDK 17 and Leiningen 2.12.0. Eliminates host-side JDK/Lein version drift and "works on my machine" issues. The Makefile requires `make libs` before `make clean all` (the `all` target does NOT invoke `libs`); both build scripts enforce this ordering. Trade-off: Docker Desktop is a ~4GB dependency, but it's commonly pre-installed on dev machines.
+
+## nginx Reverse Proxy on Frontend EC2
+
+**Options**: Serve directly from JVM on port 80 vs nginx as reverse proxy on port 80
+**Chosen**: nginx reverse proxy
+**Rationale**: Production-standard pattern that separates concerns. nginx serves static CSS at `/css/*` efficiently (with caching headers) without JVM overhead. Proxies dynamic requests to `127.0.0.1:8080`. `STATIC_URL=""` means the Clojure templates emit relative `/css/...` paths that nginx intercepts. Also provides connection buffering, request queuing, and a layer of isolation between the internet-facing port and the JVM. The `listen 80 default_server` directive ensures our config takes priority over AL2023's default nginx server block.
