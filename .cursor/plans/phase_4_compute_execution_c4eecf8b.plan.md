@@ -40,7 +40,7 @@ Phase 4 depends on outputs from Phases 1-3. Before writing any compute code, the
 
 **Expected inputs from prior phases:**
 - Networking: `subnet_id` (AZ-a), `vpc_id`
-- Security: `frontend_sg_id`, `backend_sg_id`, `instance_profile_name`
+- Security: `frontend_security_group_id`, `backend_security_group_id`, `instance_profile_name`
 - Root config: `artifact_bucket` name, `ssm_parameter_name` (`/app/newsfeed-service-token`), `region`
 - Root providers.tf: AWS provider `~> 6.0` with `default_tags`
 
@@ -53,8 +53,8 @@ Before creating the branch, run a quality audit on the existing `Feature/Iac-imp
 **Checks to perform:**
 - `terraform fmt -check -recursive` in `terraform/` -- flag formatting violations
 - `terraform validate` in `terraform/` -- catch syntax/reference errors
-- Verify [terraform/modules/networking/outputs.tf](terraform/modules/networking/outputs.tf) exports `subnet_a_id` (or equivalent) and `vpc_id`
-- Verify [terraform/modules/security/outputs.tf](terraform/modules/security/outputs.tf) exports `frontend_sg_id`, `backend_sg_id`, `instance_profile_name`
+- Verify [terraform/modules/networking/outputs.tf](terraform/modules/networking/outputs.tf) exports `public_subnet_a_id` and `vpc_id`
+- Verify [terraform/modules/security/outputs.tf](terraform/modules/security/outputs.tf) exports `frontend_security_group_id`, `backend_security_group_id`, `instance_profile_name`
 - Verify [terraform/main.tf](terraform/main.tf) wires networking and security modules, passing outputs correctly
 - Verify [terraform/providers.tf](terraform/providers.tf) has `default_tags` block and version constraints (`>= 1.9`, `~> 6.0`)
 - Verify [terraform/variables.tf](terraform/variables.tf) defines `region`, `project_name`, `environment`, `instance_type`, `aws_profile`
@@ -292,9 +292,9 @@ module "compute" {
   source = "./modules/compute"
   
   name_prefix           = local.name_prefix
-  subnet_id             = module.networking.subnet_a_id
-  frontend_sg_ids       = [module.security.frontend_sg_id]
-  backend_sg_ids        = [module.security.backend_sg_id]
+  subnet_id             = module.networking.public_subnet_a_id
+  frontend_sg_ids       = [module.security.frontend_security_group_id]
+  backend_sg_ids        = [module.security.backend_security_group_id]
   instance_profile_name = module.security.instance_profile_name
   instance_type         = var.instance_type
   artifact_bucket       = var.artifact_bucket

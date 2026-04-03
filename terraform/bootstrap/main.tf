@@ -82,8 +82,9 @@ resource "aws_s3_bucket_public_access_block" "artifacts" {
 
 # -----------------------------------------------------------------------------
 # DynamoDB Lock Table -- prevents concurrent state modifications
-# Required because native S3 locking (use_lockfile) is OpenTofu-only, not
-# available in HashiCorp Terraform. PAY_PER_REQUEST keeps cost near-zero.
+# use_lockfile = true is available in Terraform >= 1.10 as an alternative.
+# DynamoDB chosen for backward compatibility and explicit lock visibility.
+# PAY_PER_REQUEST keeps cost near-zero for a demo workload.
 # -----------------------------------------------------------------------------
 
 resource "aws_dynamodb_table" "terraform_locks" {

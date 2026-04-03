@@ -11,8 +11,10 @@ aws_profile  = "charteracademy"
 # Uncomment and set to YOUR_IP/32 for SSH access (debug only)
 # ssh_cidr = "203.0.113.0/32"
 
-# S3 artifact bucket ARN (from bootstrap output)
-artifact_bucket_arn = "arn:aws:s3:::melio-devops-dev-artifacts"
+# S3 artifact bucket ARN -- get the real value from bootstrap output:
+#   cd terraform/bootstrap && terraform output artifact_bucket_arn
+# Naming pattern: arn:aws:s3:::${project_name}-${environment}-artifacts-${account_id}
+artifact_bucket_arn = "arn:aws:s3:::melio-devops-dev-artifacts-<ACCOUNT_ID>"
 
 # Newsfeed service token -- pass via CLI, never commit the actual value:
 #   terraform apply -var="newsfeed_service_token=YOUR_TOKEN"

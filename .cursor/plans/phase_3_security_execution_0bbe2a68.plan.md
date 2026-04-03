@@ -22,7 +22,7 @@ todos:
     status: completed
   - id: commit
     content: "Step 3.6: Commit with message 'feat: add security groups, IAM roles, and SSM secret'"
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -32,7 +32,7 @@ isProject: false
 
 Phase 3 depends on outputs from Phases 1 and 2. The validation step (3.0) confirms these exist before writing any security code.
 
-- **Phase 1 complete**: Bootstrap applied in af-south-1 -- S3 state bucket (native locking via `use_lockfile`), S3 artifact bucket exist
+- **Phase 1 complete**: Bootstrap applied in af-south-1 -- S3 state bucket + DynamoDB lock table (`dynamodb_table`), S3 artifact bucket exist
 - **Phase 2 complete**: Networking module implemented and wired -- VPC, 2 public subnets, IGW, route tables; `module.networking.vpc_id` is a valid output
 - **Root scaffolding**: `providers.tf`, `backend.tf`, `variables.tf`, `locals.tf` populated (Phase 2 deliverables)
 - **Terraform init**: `terraform init` succeeds in `terraform/` directory
@@ -101,7 +101,7 @@ If any of the above checks fail, fix them before proceeding. Common issues:
 
 **Purpose**: Implement all security resources. This is the core of Phase 3.
 
-### Resource Inventory (17 resources + 3 data sources)
+### Resource Inventory (16 resources max + 4 data sources)
 
 ```mermaid
 graph TB
@@ -201,7 +201,7 @@ Use `aws_security_group` (base, no inline rules) + separate `aws_vpc_security_gr
 **Permissions policy** (`data.aws_iam_policy_document.app_permissions`):
 - Statement 1 (S3ArtifactAccess): `s3:GetObject` on `"${var.artifact_bucket_arn}/*"`
 - Statement 2 (S3ArtifactList): `s3:ListBucket` on `var.artifact_bucket_arn` -- needed for meaningful error messages from `aws s3 cp`
-- Statement 3 (SSMParameterRead): `ssm:GetParameter` on `"arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/app/*"`
+- Statement 3 (SSMParameterRead): `ssm:GetParameter` on `"arn:aws:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter/app/*"`
 
 **Role** (`aws_iam_role.app_instance`):
 - Name: `"${var.name_prefix}-app-instance-role"`

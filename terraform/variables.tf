@@ -67,6 +67,11 @@ variable "ssh_cidr" {
 variable "artifact_bucket_arn" {
   description = "ARN of the S3 artifact bucket (from bootstrap output)"
   type        = string
+
+  validation {
+    condition     = can(regex("^arn:aws:s3:::", var.artifact_bucket_arn))
+    error_message = "artifact_bucket_arn must be a valid S3 bucket ARN (arn:aws:s3:::bucket-name)."
+  }
 }
 
 variable "newsfeed_service_token" {

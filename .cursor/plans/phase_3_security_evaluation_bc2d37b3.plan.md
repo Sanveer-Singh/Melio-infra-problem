@@ -4,22 +4,22 @@ overview: Comprehensive evaluation of the Phase 3 (Security) implementation agai
 todos:
   - id: fix-tfvars-arn
     content: "CRITICAL: Fix artifact_bucket_arn in terraform.tfvars.example -- add account ID suffix or placeholder with bootstrap output command"
-    status: pending
+    status: completed
   - id: fix-bootstrap-comment
     content: "HIGH: Correct the DynamoDB comment in terraform/bootstrap/main.tf (use_lockfile IS available in Terraform >= 1.10, not OpenTofu-only)"
-    status: pending
+    status: completed
   - id: fix-phase4-interface
     content: "HIGH: Update Phase 4 plan to use correct output names (frontend_security_group_id, backend_security_group_id) instead of shortened names"
-    status: pending
+    status: completed
   - id: fix-plan-docs
     content: "MODERATE: Update Phase 3 plan text -- fix deprecated .name reference, correct locking mechanism description, fix resource count"
-    status: pending
+    status: completed
   - id: add-arn-validation
     content: "LOW: Add validation block to artifact_bucket_arn variable in root variables.tf"
-    status: pending
+    status: completed
   - id: finalize-commit
     content: "LOW: Mark Step 3.6 (commit) as completed in the Phase 3 plan"
-    status: pending
+    status: completed
 isProject: false
 ---
 
