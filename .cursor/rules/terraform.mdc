@@ -1,0 +1,49 @@
+---
+description: "Terraform conventions for AWS infrastructure -- provider ~> 6.0, module patterns, naming, tagging"
+globs:
+  - "terraform/**/*.tf"
+alwaysApply: false
+---
+
+# Terraform Conventions
+
+## Version Constraints
+- Terraform: `required_version = ">= 1.9"`
+- AWS provider: `required_providers { aws = { source = "hashicorp/aws", version = "~> 6.0" } }`
+
+## Provider Configuration
+- Always use `profile = var.aws_profile` (default `"charteracademy"`)
+- Always use `region = var.region` (default `"af-south-1"`)
+- Apply `default_tags` block on the provider for Project, Environment, ManagedBy tags:
+```hcl
+default_tags {
+  tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+```
+
+## Module Structure
+Each module directory contains: `main.tf`, `variables.tf`, `outputs.tf`
+
+## Naming
+- All identifiers use `snake_case`
+- Resource names prefixed with `local.name_prefix` (`"${var.project_name}-${var.environment}"`)
+
+## AMIs
+- Never hardcode AMI IDs -- always use `aws_ami` data source with `owners = ["amazon"]` filter
+
+## Variables
+- Every variable must have `description`, `type`, and `validation` blocks where appropriate
+
+## Sensitive Outputs
+- Mark with `sensitive = true`
+
+## Remote State
+- S3 backend (versioned, encrypted) + DynamoDB lock table, both in af-south-1
+- `.terraform.lock.hcl` must always be committed to version control
+
+## Pre-commit Checks
+- Run `terraform fmt` and `terraform validate` before every commit
