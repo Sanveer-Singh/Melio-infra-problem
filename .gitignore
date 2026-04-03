@@ -21,6 +21,7 @@ pom.xml.asc
 .terraform/
 terraform.tfvars
 crash.log
+tfplan
 override.tf
 override.tf.json
 *_override.tf
