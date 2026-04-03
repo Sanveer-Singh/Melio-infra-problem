@@ -87,3 +87,20 @@ Each decision follows the format: **Decision** / Options Considered / Chosen / R
 **Decision**: Use `aws_iam_role_policy` (inline) instead of `aws_iam_policy` + `aws_iam_role_policy_attachment`.
 
 **Rationale**: The permissions policy is specific to the app instance role and won't be reused across roles. Inline policy simplifies the module (fewer resources) and the policy lifecycle is tied to the role. For production with multiple roles sharing policies, managed policies would be preferred.
+
+## Terraform-Generated SSH Key Pair
+
+**Options**: Terraform-generated TLS key vs pre-existing key vs SSM Session Manager only
+**Chosen**: Terraform-generated `tls_private_key` (RSA 4096) + `aws_key_pair`
+**Rationale**: Enables quick SSH debugging during demo without external key management. Private key ends up in Terraform state (unencrypted). Production should use SSM Session Manager or pre-existing keys distributed out-of-band. The `tls_private_key` resource security warning is acceptable for a time-boxed dev environment.
+
+## EnvironmentFile vs Inline Environment= in Systemd
+
+**Options**: `EnvironmentFile=/opt/app/<service>.env` vs `Environment=` directives in unit file
+**Chosen**: EnvironmentFile
+**Rationale**: More robust with special characters in values (e.g., NEWSFEED_SERVICE_TOKEN contains `&`, `^`). Easier to debug on-instance via `cat /opt/app/<service>.env`. Separates runtime config from service definition.
+
+## Artifact Bucket Name Derived from ARN
+
+**Decision**: Extract bucket name via `replace(var.artifact_bucket_arn, "arn:aws:s3:::", "")` in locals.
+**Rationale**: Root module already has `artifact_bucket_arn` (from bootstrap). User data scripts need the bucket name for `aws s3 cp`. Deriving from ARN avoids adding a second variable and keeps the tfvars interface minimal. Trade-off: fragile if ARN format changes (extremely unlikely for S3).

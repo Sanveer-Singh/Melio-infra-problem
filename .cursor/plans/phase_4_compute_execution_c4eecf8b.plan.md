@@ -4,31 +4,31 @@ overview: "Comprehensive execution plan for Phase 4 (Compute Module) of the Meli
 todos:
   - id: verify-phases-1-3
     content: "Step 0: Quality verification of Phases 1-3 -- terraform fmt/validate, verify module outputs and wiring"
-    status: pending
+    status: completed
   - id: create-branch
     content: "Step 1: Create feature/phase-4-compute branch off Feature/Iac-implementation"
-    status: pending
+    status: completed
   - id: add-tls-provider
     content: "Step 2: Add hashicorp/tls ~> 4.0 to required_providers in terraform/providers.tf"
-    status: pending
+    status: completed
   - id: compute-variables
     content: "Step 3: Populate terraform/modules/compute/variables.tf with all input variable declarations"
-    status: pending
+    status: completed
   - id: user-data-templates
     content: "Step 4: Create all 4 templates -- nginx.conf.tpl, quotes.sh.tpl, newsfeed.sh.tpl, frontend.sh.tpl"
-    status: pending
+    status: completed
   - id: compute-main
     content: "Step 5: Populate terraform/modules/compute/main.tf -- AMI data source, TLS key pair, 3 EC2 instances with templatefile()"
-    status: pending
+    status: completed
   - id: compute-outputs
     content: "Step 6: Populate terraform/modules/compute/outputs.tf -- instance IDs, IPs, key pair, sensitive private key"
-    status: pending
+    status: completed
   - id: root-wiring
     content: "Step 7: Wire compute module in terraform/main.tf, add root variables/outputs"
-    status: pending
+    status: completed
   - id: validate-commit
     content: "Step 8: terraform fmt, terraform validate, commit with conventional message"
-    status: pending
+    status: completed
 isProject: false
 ---
 

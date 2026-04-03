@@ -28,8 +28,9 @@ done
 ```
 
 ## Systemd Units
-- Each JAR runs as a systemd unit with `Restart=on-failure`
-- Environment variables set in the unit file's `Environment=` directives
+- Each JAR runs as a systemd unit with `Restart=on-failure` and `RestartSec=5`
+- Environment variables via `EnvironmentFile=/opt/app/<service>.env` (robust with special chars, easier to debug on-instance)
+- ExecStart uses full path: `/usr/bin/java -Xmx512m -XX:+UseSerialGC -jar /opt/app/<service>.jar`
 
 ## Logging
 Log completion: `echo "User data complete for <service>" | systemd-cat -t user-data`

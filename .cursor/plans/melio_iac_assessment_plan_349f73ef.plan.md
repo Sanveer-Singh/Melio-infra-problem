@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: phase-4-compute
     content: "Phase 4: Compute module -- 3 EC2 instances (t3.small, AL2023, all in subnet-a), user data with JVM heap flags, nginx, systemd"
-    status: pending
+    status: completed
   - id: phase-5-alb
     content: "Phase 5: ALB module -- load balancer in 2 AZs, target group port 80, health check /ping on port 80"
     status: pending
