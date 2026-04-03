@@ -44,8 +44,12 @@ resource "aws_key_pair" "app" {
 # -----------------------------------------------------------------------------
 
 locals {
+  frontend_port = 8080
+  quotes_port   = 8082
+  newsfeed_port = 8083
+
   nginx_conf = templatefile("${path.module}/templates/nginx.conf.tpl", {
-    frontend_port = var.frontend_port
+    frontend_port = local.frontend_port
   })
 }
 
@@ -55,16 +59,17 @@ locals {
 # -----------------------------------------------------------------------------
 
 resource "aws_instance" "quotes" {
-  ami                    = data.aws_ami.al2023.id
-  instance_type          = var.instance_type
-  subnet_id              = var.subnet_id
-  vpc_security_group_ids = var.backend_sg_ids
-  iam_instance_profile   = var.instance_profile_name
-  key_name               = aws_key_pair.app.key_name
+  ami                         = data.aws_ami.al2023.id
+  instance_type               = var.instance_type
+  subnet_id                   = var.subnet_id
+  vpc_security_group_ids      = var.backend_sg_ids
+  iam_instance_profile        = var.instance_profile_name
+  key_name                    = aws_key_pair.app.key_name
+  associate_public_ip_address = true
 
   user_data = templatefile("${path.module}/templates/quotes.sh.tpl", {
     artifact_bucket = var.artifact_bucket
-    quotes_port     = var.quotes_port
+    quotes_port     = local.quotes_port
   })
   user_data_replace_on_change = true
 
@@ -72,16 +77,17 @@ resource "aws_instance" "quotes" {
 }
 
 resource "aws_instance" "newsfeed" {
-  ami                    = data.aws_ami.al2023.id
-  instance_type          = var.instance_type
-  subnet_id              = var.subnet_id
-  vpc_security_group_ids = var.backend_sg_ids
-  iam_instance_profile   = var.instance_profile_name
-  key_name               = aws_key_pair.app.key_name
+  ami                         = data.aws_ami.al2023.id
+  instance_type               = var.instance_type
+  subnet_id                   = var.subnet_id
+  vpc_security_group_ids      = var.backend_sg_ids
+  iam_instance_profile        = var.instance_profile_name
+  key_name                    = aws_key_pair.app.key_name
+  associate_public_ip_address = true
 
   user_data = templatefile("${path.module}/templates/newsfeed.sh.tpl", {
     artifact_bucket = var.artifact_bucket
-    newsfeed_port   = var.newsfeed_port
+    newsfeed_port   = local.newsfeed_port
   })
   user_data_replace_on_change = true
 
@@ -89,20 +95,21 @@ resource "aws_instance" "newsfeed" {
 }
 
 resource "aws_instance" "frontend" {
-  ami                    = data.aws_ami.al2023.id
-  instance_type          = var.instance_type
-  subnet_id              = var.subnet_id
-  vpc_security_group_ids = var.frontend_sg_ids
-  iam_instance_profile   = var.instance_profile_name
-  key_name               = aws_key_pair.app.key_name
+  ami                         = data.aws_ami.al2023.id
+  instance_type               = var.instance_type
+  subnet_id                   = var.subnet_id
+  vpc_security_group_ids      = var.frontend_sg_ids
+  iam_instance_profile        = var.instance_profile_name
+  key_name                    = aws_key_pair.app.key_name
+  associate_public_ip_address = true
 
   user_data = templatefile("${path.module}/templates/frontend.sh.tpl", {
     artifact_bucket     = var.artifact_bucket
-    frontend_port       = var.frontend_port
+    frontend_port       = local.frontend_port
     quotes_private_ip   = aws_instance.quotes.private_ip
-    quotes_port         = var.quotes_port
+    quotes_port         = local.quotes_port
     newsfeed_private_ip = aws_instance.newsfeed.private_ip
-    newsfeed_port       = var.newsfeed_port
+    newsfeed_port       = local.newsfeed_port
     ssm_parameter_name  = var.ssm_parameter_name
     region              = var.region
     nginx_conf          = local.nginx_conf

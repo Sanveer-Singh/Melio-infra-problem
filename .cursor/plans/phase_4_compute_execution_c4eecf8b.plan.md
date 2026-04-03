@@ -179,7 +179,7 @@ All templates follow conventions in [.cursor/rules/user-data.mdc](.cursor/rules/
 10. `systemctl daemon-reload && systemctl enable --now frontend nginx`
 11. Completion log
 
-**Critical escaping detail:** The `NEWSFEED_SERVICE_TOKEN` line in the env file heredoc must use bash `$$NEWSFEED_TOKEN` in the Terraform template (double `$$` produces literal `$` after Terraform processing, which bash then expands to the SSM value). All other `${...}` variables in the env file heredoc are Terraform-interpolated at plan time.
+**Escaping note:** The `NEWSFEED_SERVICE_TOKEN` line uses `$NEWSFEED_TOKEN` (single `$`, no curly braces). Terraform's `templatefile()` only interpolates `${...}` and `%{...}` sequences -- bare `$VARIABLE` references pass through untouched to bash. Double `$$` is only needed when the template contains `$${...}` (with curly braces) to produce a literal `${`. All other `${...}` variables in the env file heredoc are Terraform-interpolated at plan time.
 
 ---
 

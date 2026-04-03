@@ -8,6 +8,7 @@ mkdir -p /opt/app
 for i in 1 2 3; do
   aws s3 cp "s3://${artifact_bucket}/quotes.jar" /opt/app/quotes.jar && break || sleep 10
 done
+[ -f /opt/app/quotes.jar ] || { echo "FATAL: Failed to download quotes.jar after 3 attempts" >&2; exit 1; }
 
 cat > /opt/app/quotes.env << 'ENV_EOF'
 APP_PORT=${quotes_port}

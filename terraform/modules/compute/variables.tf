@@ -50,20 +50,3 @@ variable "region" {
   type        = string
 }
 
-variable "frontend_port" {
-  description = "Port the frontend JAR listens on"
-  type        = number
-  default     = 8080
-}
-
-variable "quotes_port" {
-  description = "Port the quotes JAR listens on"
-  type        = number
-  default     = 8082
-}
-
-variable "newsfeed_port" {
-  description = "Port the newsfeed JAR listens on"
-  type        = number
-  default     = 8083
-}

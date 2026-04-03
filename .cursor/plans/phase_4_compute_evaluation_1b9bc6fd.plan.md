@@ -4,19 +4,19 @@ overview: Comprehensive evaluation of Phase 4 (Compute Module) implementation ag
 todos:
   - id: fix-retry-guard
     content: "CRITICAL: Add file existence guard after each S3 download retry loop in all 3 user data templates (5 download locations total)"
-    status: pending
+    status: completed
   - id: add-public-ip
     content: "HIGH: Add associate_public_ip_address = true to all 3 aws_instance resources in compute/main.tf"
-    status: pending
+    status: completed
   - id: port-consistency
     content: "HIGH: Resolve port hardcoding mismatch between security module (hardcoded 8082/8083) and compute module (configurable variables)"
-    status: pending
+    status: completed
   - id: update-plan-escaping
     content: "MODERATE: Update Phase 4 plan Step 4d to correct the $$NEWSFEED_TOKEN claim -- single $ is correct for bare variables in templatefile()"
-    status: pending
+    status: completed
   - id: update-tradeoffs
     content: "LOW: Add IMDSv2 note and port-hardcoding rationale to docs/trade-offs.md"
-    status: pending
+    status: completed
 isProject: false
 ---
 

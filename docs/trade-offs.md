@@ -132,3 +132,15 @@ Each decision follows the format: **Decision** / Options Considered / Chosen / R
 
 **Decision**: Extract bucket name via `replace(var.artifact_bucket_arn, "arn:aws:s3:::", "")` in locals.
 **Rationale**: Root module already has `artifact_bucket_arn` (from bootstrap). User data scripts need the bucket name for `aws s3 cp`. Deriving from ARN avoids adding a second variable and keeps the tfvars interface minimal. Trade-off: fragile if ARN format changes (extremely unlikely for S3).
+
+## Service Ports as Compute-Module Locals (Not Variables)
+
+**Options**: Configurable port variables on the compute module vs fixed locals
+**Chosen**: Fixed locals in `compute/main.tf` (frontend=8080, quotes=8082, newsfeed=8083)
+**Rationale**: The security module hardcodes these ports in its ingress rules. Exposing them as configurable variables on the compute module creates a hidden coupling -- changing a port default would silently break security group rules. Locking ports as locals prevents drift. If ports need to change in the future, both modules must be updated together.
+
+## IMDSv2 Not Enforced
+
+**Options**: Default IMDS (v1 + v2) vs enforced IMDSv2 (`http_tokens = "required"`)
+**Chosen**: Default (both v1 and v2 allowed)
+**Rationale**: Enforcing IMDSv2 is a security best practice that mitigates SSRF-based credential theft. However, for a time-boxed demo with no sensitive workloads, the default is acceptable. Production deployments should set `metadata_options { http_tokens = "required" }` on all EC2 instances.

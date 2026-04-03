@@ -20,11 +20,12 @@ Install via `dnf install -y java-17-amazon-corretto-headless`
 On t3.small (2 GiB RAM): `-Xmx512m -XX:+UseSerialGC`
 
 ## S3 Artifact Download
-Use a retry loop:
+Use a retry loop with a file existence guard (`set -e` does not trigger inside conditionals):
 ```bash
 for i in 1 2 3; do
   aws s3 cp "s3://${artifact_bucket}/${jar_name}" /opt/app/${jar_name} && break || sleep 10
 done
+[ -f /opt/app/${jar_name} ] || { echo "FATAL: Failed to download ${jar_name} after 3 attempts" >&2; exit 1; }
 ```
 
 ## Systemd Units

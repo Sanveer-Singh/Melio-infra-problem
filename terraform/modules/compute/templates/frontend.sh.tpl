@@ -8,10 +8,12 @@ mkdir -p /opt/app/static
 for i in 1 2 3; do
   aws s3 cp "s3://${artifact_bucket}/front-end.jar" /opt/app/front-end.jar && break || sleep 10
 done
+[ -f /opt/app/front-end.jar ] || { echo "FATAL: Failed to download front-end.jar after 3 attempts" >&2; exit 1; }
 
 for i in 1 2 3; do
   aws s3 cp "s3://${artifact_bucket}/static.tgz" /opt/app/static.tgz && break || sleep 10
 done
+[ -f /opt/app/static.tgz ] || { echo "FATAL: Failed to download static.tgz after 3 attempts" >&2; exit 1; }
 
 tar -xzf /opt/app/static.tgz -C /opt/app/static/
 
