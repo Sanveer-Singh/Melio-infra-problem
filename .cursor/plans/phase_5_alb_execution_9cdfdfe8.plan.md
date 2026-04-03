@@ -25,7 +25,7 @@ todos:
     status: completed
   - id: commit
     content: "Step 5.7: Commit with message 'feat: add ALB with target group, listener, and health checks'"
-    status: pending
+    status: completed
 isProject: false
 ---
 

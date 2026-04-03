@@ -6,6 +6,8 @@ resource "aws_lb" "main" {
   subnets            = var.public_subnet_ids
 
   enable_deletion_protection = false
+
+  tags = { Name = "${var.name_prefix}-alb" }
 }
 
 resource "aws_lb_target_group" "frontend" {
@@ -15,6 +17,8 @@ resource "aws_lb_target_group" "frontend" {
   vpc_id               = var.vpc_id
   target_type          = "instance"
   deregistration_delay = 30
+
+  tags = { Name = "${var.name_prefix}-fe-tg" }
 
   health_check {
     enabled             = true

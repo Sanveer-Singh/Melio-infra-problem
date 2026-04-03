@@ -139,6 +139,12 @@ Each decision follows the format: **Decision** / Options Considered / Chosen / R
 **Chosen**: Fixed locals in `compute/main.tf` (frontend=8080, quotes=8082, newsfeed=8083)
 **Rationale**: The security module hardcodes these ports in its ingress rules. Exposing them as configurable variables on the compute module creates a hidden coupling -- changing a port default would silently break security group rules. Locking ports as locals prevents drift. If ports need to change in the future, both modules must be updated together.
 
+## Nginx `default_server` Directive on AL2023
+
+**Options**: `listen 80;` vs `listen 80 default_server;` in custom nginx config
+**Chosen**: `listen 80 default_server;`
+**Rationale**: AL2023's default nginx installation may include a server block listening on port 80 inside `/etc/nginx/nginx.conf`. Without `default_server`, the default nginx server takes priority (first-loaded wins) and serves requests from `/usr/share/nginx/html/` instead of proxying to the JVM. This would cause ALB health checks on `/ping` to receive 404 instead of 200, preventing the target from becoming healthy. Adding `default_server` explicitly claims priority regardless of load order. Harmless if the default server doesn't exist; essential if it does.
+
 ## IMDSv2 Not Enforced
 
 **Options**: Default IMDS (v1 + v2) vs enforced IMDSv2 (`http_tokens = "required"`)
