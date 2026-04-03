@@ -1,0 +1,37 @@
+---
+description: "Melio DevOps assessment project conventions -- commits, secrets, scripts, architecture decisions"
+globs: []
+alwaysApply: true
+---
+
+# Project Conventions
+
+## Commit Messages
+Use conventional commits: `feat:`, `fix:`, `chore:`, `docs:`
+
+## Secrets
+- No secrets in version control
+- `NEWSFEED_SERVICE_TOKEN` stored in SSM Parameter Store, read at boot via IAM
+- `terraform.tfvars` is gitignored -- use `terraform.tfvars.example` as the template
+- Never put credentials in `.tf` files or commit output containing secrets
+
+## Shell Scripts
+- Always start with `#!/bin/bash` and `set -euxo pipefail`
+- Use `dnf` (not `yum`) on AL2023
+
+## Architecture Scope
+- Region: af-south-1 (Cape Town), single environment (dev)
+- Public subnets only, no HA -- this is a time-boxed demo
+- HTTP only (no TLS) -- sufficient for dev/test verification
+
+## Decision Making
+- When in doubt, choose simplicity over perfection
+- Document trade-offs in `docs/trade-offs.md`
+- Always tag resources via provider `default_tags`
+
+## Reference
+- Plans are version-controlled in `.cursor/plans/`
+- Full architecture plan: `.cursor/plans/melio_iac_assessment_plan_349f73ef.plan.md`
+- Phase execution plans: `.cursor/plans/phase_*_execution_*.plan.md`
+- Planning methodology documented in README.md "Planning Methodology" section
+- Plan files reference table in README.md lists all 15 plan files with purpose descriptions

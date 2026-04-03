@@ -1,0 +1,37 @@
+---
+description: "EC2 user data template conventions -- fail-fast, JVM flags, S3 retry, systemd"
+globs:
+  - "terraform/**/templates/*.tpl"
+alwaysApply: false
+---
+
+# User Data Template Conventions
+
+## Script Header
+Always start with `#!/bin/bash` and `set -euxo pipefail`
+
+## AL2023 Package Manager
+Use `dnf`, not `yum` -- AL2023 does not ship yum
+
+## Java
+Install via `dnf install -y java-17-amazon-corretto-headless`
+
+## JVM Flags
+On t3.small (2 GiB RAM): `-Xmx512m -XX:+UseSerialGC`
+
+## S3 Artifact Download
+Use a retry loop with a file existence guard (`set -e` does not trigger inside conditionals):
+```bash
+for i in 1 2 3; do
+  aws s3 cp "s3://${artifact_bucket}/${jar_name}" /opt/app/${jar_name} && break || sleep 10
+done
+[ -f /opt/app/${jar_name} ] || { echo "FATAL: Failed to download ${jar_name} after 3 attempts" >&2; exit 1; }
+```
+
+## Systemd Units
+- Each JAR runs as a systemd unit with `Restart=on-failure` and `RestartSec=5`
+- Environment variables via `EnvironmentFile=/opt/app/<service>.env` (robust with special chars, easier to debug on-instance)
+- ExecStart uses full path: `/usr/bin/java -Xmx512m -XX:+UseSerialGC -jar /opt/app/<service>.jar`
+
+## Logging
+Log completion: `echo "User data complete for <service>" | systemd-cat -t user-data`

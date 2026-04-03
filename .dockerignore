@@ -1,0 +1,14 @@
+.git/
+.terraform/
+build/
+docs/
+.cursor/
+terraform/
+scripts/
+*.md
+*.tfstate
+*.tfstate.backup
+*.pem
+.gitignore
+.gitattributes
+.dockerignore

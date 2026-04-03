@@ -1,0 +1,7 @@
+FROM clojure:temurin-17-lein
+
+WORKDIR /app
+
+COPY . .
+
+RUN make libs && make clean all

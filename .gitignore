@@ -14,3 +14,22 @@ pom.xml.asc
 .DS_Store
 *.iml
 .idea/
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+terraform.tfvars
+crash.log
+tfplan
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# NOTE: .terraform.lock.hcl is intentionally NOT ignored -- commit it for reproducible provider installs
+
+# SSH keys
+*.pem
+
+# Cursor IDE
+# .cursor/rules/ and .cursor/plans/ are both version-controlled

@@ -6,6 +6,7 @@
                  [compojure "1.5.0"]
                  [hiccup "1.0.5"]
                  [http-kit "2.1.18"]
+                 [javax.xml.bind/jaxb-api "2.3.1"]
                  [org.clojure/tools.logging "0.3.1"]
                  [ch.qos.logback/logback-classic "1.1.7"]
                  [ring/ring-devel "1.4.0"]]

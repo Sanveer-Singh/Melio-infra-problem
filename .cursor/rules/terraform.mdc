@@ -1,0 +1,55 @@
+---
+description: "Terraform conventions for AWS infrastructure -- provider ~> 6.0, module patterns, naming, tagging"
+globs:
+  - "terraform/**/*.tf"
+alwaysApply: false
+---
+
+# Terraform Conventions
+
+## Version Constraints
+- Terraform: `required_version = ">= 1.10"`
+- AWS provider: `required_providers { aws = { source = "hashicorp/aws", version = "~> 6.0" } }`
+
+## Provider Configuration
+- Always use `profile = var.aws_profile` (default `"charteracademy"`)
+- Always use `region = var.region` (default `"af-south-1"`)
+- Apply `default_tags` block on the provider for Project, Environment, ManagedBy tags:
+```hcl
+default_tags {
+  tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+```
+
+## Module Structure
+Each module directory contains: `main.tf`, `variables.tf`, `outputs.tf`
+
+## Naming
+- All identifiers use `snake_case`
+- Resource names prefixed with `local.name_prefix` (`"${var.project_name}-${var.environment}"`)
+
+## Data Sources (Provider 6.x)
+- `data.aws_region.current.name` is **deprecated** -- use `data.aws_region.current.region` instead
+- `inline_policy` argument on `aws_iam_role` is **deprecated** -- use `aws_iam_role_policy` resource instead
+- Security group rules: use `aws_vpc_security_group_ingress_rule` / `aws_vpc_security_group_egress_rule` standalone resources (not inline `ingress`/`egress` blocks)
+
+## AMIs
+- Never hardcode AMI IDs -- always use `aws_ami` data source with `owners = ["amazon"]` filter
+
+## Variables
+- Every variable must have `description`, `type`, and `validation` blocks where appropriate
+
+## Sensitive Outputs
+- Mark with `sensitive = true`
+
+## Remote State
+- S3 backend (versioned, encrypted) + DynamoDB lock table, both in af-south-1
+- `use_lockfile = true` is available in Terraform >= 1.10 for native S3 locking; this project uses DynamoDB (`dynamodb_table`) for backward compatibility and explicit lock visibility
+- `.terraform.lock.hcl` must always be committed to version control
+
+## Pre-commit Checks
+- Run `terraform fmt` and `terraform validate` before every commit
