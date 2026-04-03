@@ -60,3 +60,15 @@ output "ssh_key_pair_name" {
   description = "Name of the SSH key pair in AWS"
   value       = module.compute.key_pair_name
 }
+
+# --- ALB outputs ---
+
+output "application_url" {
+  description = "URL to access the application (ALB DNS name)"
+  value       = "http://${module.alb.alb_dns_name}"
+}
+
+output "alb_dns_name" {
+  description = "DNS name of the Application Load Balancer"
+  value       = module.alb.alb_dns_name
+}

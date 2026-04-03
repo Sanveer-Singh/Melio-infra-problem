@@ -19,7 +19,7 @@ todos:
     status: completed
   - id: phase-5-alb
     content: "Phase 5: ALB module -- load balancer in 2 AZs, target group port 80, health check /ping on port 80"
-    status: pending
+    status: completed
   - id: phase-6-docs
     content: "Phase 6: Comprehensive README with story refinement, architecture diagram, future-work.md, trade-offs.md"
     status: pending

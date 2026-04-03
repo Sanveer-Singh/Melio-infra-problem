@@ -94,6 +94,34 @@ Each decision follows the format: **Decision** / Options Considered / Chosen / R
 **Chosen**: Terraform-generated `tls_private_key` (RSA 4096) + `aws_key_pair`
 **Rationale**: Enables quick SSH debugging during demo without external key management. Private key ends up in Terraform state (unencrypted). Production should use SSM Session Manager or pre-existing keys distributed out-of-band. The `tls_private_key` resource security warning is acceptable for a time-boxed dev environment.
 
+## ALB Health Check on Port 80 (nginx) vs Port 8080 (JVM)
+
+**Options**: Health check on port 80 (nginx proxy) vs port 8080 (JVM direct)
+**Chosen**: Port 80 (matches target group traffic port)
+**Rationale**: Validates the full stack (nginx -> JVM). If nginx is down but JVM is up, health checks on 8080 would incorrectly report healthy while traffic on port 80 would fail. Checking port 80 ensures the entire request path works.
+
+## ALB Deregistration Delay: 30s vs 300s Default
+
+**Options**: AWS default 300s vs reduced 30s
+**Chosen**: 30s
+**Rationale**: Dev/demo environment prioritizes fast iteration and teardown. The 300s default is designed for graceful connection draining in production. 30s is sufficient for the in-flight request load of a dev environment.
+
+## Target Group Attachment Inside ALB Module vs Root Module
+
+**Options**: `aws_lb_target_group_attachment` inside ALB module vs in root `main.tf`
+**Chosen**: Inside ALB module
+**Rationale**: Keeps the module self-contained for a single-frontend-instance demo. For multi-instance setups (ASG), the attachment would be managed by the compute/ASG module instead.
+
+## No ALB Access Logs or WAF
+
+**Decision**: ALB provisioned without S3 access logging or WAF integration.
+**Rationale**: No access log bucket provisioned; WAF out of scope per master plan. Both documented as future work. Acceptable for a time-boxed dev environment.
+
+## ALB Deletion Protection Explicitly Disabled
+
+**Decision**: `enable_deletion_protection = false` set explicitly on the ALB.
+**Rationale**: Must be false for `terraform destroy` to succeed during teardown. AWS default is already false, but explicit setting prevents a future default change from breaking the teardown script.
+
 ## EnvironmentFile vs Inline Environment= in Systemd
 
 **Options**: `EnvironmentFile=/opt/app/<service>.env` vs `Environment=` directives in unit file
