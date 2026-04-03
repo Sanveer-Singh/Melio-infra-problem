@@ -3,32 +3,32 @@ name: Phase 7 Execution Plan
 overview: Comprehensive execution plan for Phase 7 (Validation and Teardown) -- covers quality gate review of Phases 1-6, terraform plan/apply, end-to-end validation with automated scripts, teardown with proper prevent_destroy/force_destroy handling, and cleanup verification.
 todos:
   - id: branch
-    content: Create feature/phase-7-validation-teardown branch from feature/Iac-implementation
-    status: pending
+    content: Executed on feature/Iac-implementation branch directly
+    status: completed
   - id: quality-gate
-    content: "Step 7.0: Quality gate review of Phases 1-6 implementation (audit all modules against master plan, run fmt/validate)"
-    status: pending
+    content: "Step 7.0: Quality gate -- found 3 plan inaccuracies (DynamoDB docs, force_destroy, use_lockfile) and JAXB build fix needed"
+    status: completed
   - id: validate-script
-    content: "Step 7.1: Write scripts/validate.sh -- automated health check with retries for /ping, /, /css/bootstrap.min.css"
-    status: pending
+    content: "Step 7.1: Created scripts/validate.sh -- tests /ping, /, /css/bootstrap.min.css with retries"
+    status: completed
   - id: teardown-script
-    content: "Step 7.2: Write scripts/teardown.sh -- ordered destroy (main infra -> disable prevent_destroy -> bootstrap), with S3 emptying fallback and cleanup verification"
-    status: pending
+    content: "Step 7.2: Created scripts/teardown.sh -- hardened for Windows (no /dev/stdin), DynamoDB lock fallback, versioned S3 cleanup"
+    status: completed
   - id: pre-apply
-    content: "Step 7.3: Run terraform fmt -check, validate, plan -out=tfplan -- review ~15-20 resources"
-    status: pending
+    content: "Step 7.3: terraform fmt + validate + plan -- 30 resources planned"
+    status: completed
   - id: apply
-    content: "Step 7.4: Run terraform apply tfplan -- capture ALB DNS and instance IPs from outputs"
-    status: pending
+    content: "Step 7.4: terraform apply -- 30 resources created, ALB DNS: melio-devops-dev-alb-869315489.af-south-1.elb.amazonaws.com"
+    status: completed
   - id: validate-e2e
-    content: "Step 7.5: Run scripts/validate.sh -- end-to-end validation with retry logic, debug cloud-init if failures"
-    status: pending
+    content: "Step 7.5: All 3 validation checks PASSED on first attempt. Browser confirmed newsfeed + quotes + CSS. Screenshots saved to docs/screenshots/"
+    status: completed
   - id: teardown-run
-    content: "Step 7.6: Run scripts/teardown.sh -- full teardown and verify no lingering resources"
-    status: pending
+    content: "Step 7.6: Teardown completed -- all resources destroyed, tagging API verified clean"
+    status: completed
   - id: commit
-    content: "Step 7.7: Commit deliverables: scripts/validate.sh, scripts/teardown.sh, any doc updates"
-    status: pending
+    content: "Step 7.7: Commit deliverables: scripts/validate.sh, scripts/teardown.sh, JAXB fix, screenshots, plan updates"
+    status: completed
 isProject: false
 ---
 
@@ -54,19 +54,19 @@ Before any terraform operations, audit every module for correctness and alignmen
 
 ### 7.0.1 Bootstrap Audit ([`terraform/bootstrap/`](terraform/bootstrap/))
 
-- **S3 state bucket**: versioned, encrypted (SSE-S3 or KMS), `aws_s3_bucket_public_access_block` set, `prevent_destroy = true`, and critically: **`force_destroy = true`** (required for teardown -- if missing, the teardown script must be adapted to empty buckets via AWS CLI)
-- **S3 artifact bucket**: versioned, encrypted, `force_destroy = true`
-- **No DynamoDB**: Native S3 locking (`use_lockfile = true`) is used -- no lock table resource
+- **S3 state bucket**: versioned, encrypted (AES256), `aws_s3_bucket_public_access_block` set, `prevent_destroy = true`. **NOTE: `force_destroy` is NOT set** -- the teardown script must empty the bucket via AWS CLI before `terraform destroy` can succeed.
+- **S3 artifact bucket**: versioned, encrypted, `force_destroy = true` (teardown-safe)
+- **DynamoDB lock table**: `aws_dynamodb_table.terraform_locks` with PAY_PER_REQUEST billing, hash key `LockID`. Used by `backend.tf` via `dynamodb_table` attribute.
 - **Provider**: `profile = var.aws_profile`, `region = var.region` (af-south-1), version `~> 6.0`
 - **Local state**: bootstrap must NOT have a backend block (uses local state)
-- **Outputs**: `state_bucket_name`, `artifact_bucket_name`, `artifact_bucket_arn`, `state_bucket_arn`, `region` (needed by teardown script and Phase 2 backend config)
+- **Outputs**: `state_bucket_name`, `artifact_bucket_name`, `artifact_bucket_arn`, `state_bucket_arn`, `lock_table_name`, `region` (needed by teardown script and Phase 2 backend config)
 
 **Flag**: If `force_destroy = true` is NOT set on S3 buckets, the teardown script must include AWS CLI bucket-emptying logic as a fallback (see Step 7.4).
 
 ### 7.0.2 Root Module Audit ([`terraform/`](terraform/))
 
 - [`providers.tf`](terraform/providers.tf): AWS provider `~> 6.0`, `required_version = ">= 1.9"`, `profile = var.aws_profile`, `region = var.region`, `default_tags` block with Project/Environment/ManagedBy
-- [`backend.tf`](terraform/backend.tf): S3 backend pointing to state bucket in af-south-1, `use_lockfile = true`, `encrypt = true`
+- [`backend.tf`](terraform/backend.tf): S3 backend pointing to state bucket in af-south-1, `dynamodb_table = "melio-devops-dev-terraform-locks"`, `encrypt = true`
 - [`variables.tf`](terraform/variables.tf): `region` (default af-south-1 with validation), `project_name`, `environment`, `instance_type` (default t3.small), `aws_profile`, `ssh_cidr` (optional)
 - [`locals.tf`](terraform/locals.tf): `name_prefix = "${var.project_name}-${var.environment}"`
 - [`main.tf`](terraform/main.tf): all 4 modules wired (networking, security, compute, alb) with correct inter-module references
@@ -257,7 +257,7 @@ ssh -i <key> ec2-user@<instance-ip> "sudo cat /var/log/cloud-init-output.log"
 
 These Phase 1-6 design decisions directly impact Phase 7. If any are not met, the teardown script requires adaptation:
 
-- **Phase 1**: Bootstrap S3 buckets MUST have `force_destroy = true`. Without it, `terraform destroy` fails with "BucketNotEmpty" on versioned buckets. The teardown script includes a fallback (AWS CLI emptying) but `force_destroy` is strongly preferred.
+- **Phase 1**: Bootstrap artifact bucket has `force_destroy = true` (teardown-safe). **State bucket does NOT** have `force_destroy` -- the teardown script MUST empty it via AWS CLI (delete all objects + versions) before `terraform destroy`.
 - **Phase 1**: Bootstrap MUST export outputs (`state_bucket_name`, `artifact_bucket_name`, `state_bucket_arn`, `artifact_bucket_arn`) for the teardown script's cleanup verification.
 - **Phase 1**: State bucket MUST have `prevent_destroy = true` (the teardown script is designed to flip this via sed).
 - **Phase 1**: Bootstrap uses **local state** (no backend block) -- its `terraform.tfstate` lives on disk in `terraform/bootstrap/`. This file must exist for teardown.

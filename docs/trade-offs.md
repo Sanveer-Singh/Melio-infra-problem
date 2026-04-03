@@ -157,6 +157,12 @@ Each decision follows the format: **Decision** / Options Considered / Chosen / R
 **Chosen**: Docker as primary (`scripts/build-docker.sh`), local as fallback (`scripts/build-local.sh`)
 **Rationale**: Docker build uses `clojure:temurin-17-lein` image which bundles JDK 17 and Leiningen 2.12.0. Eliminates host-side JDK/Lein version drift and "works on my machine" issues. The Makefile requires `make libs` before `make clean all` (the `all` target does NOT invoke `libs`); both build scripts enforce this ordering. Trade-off: Docker Desktop is a ~4GB dependency, but it's commonly pre-installed on dev machines.
 
+## JAXB API Dependency for JDK 17 Compatibility
+
+**Options**: Use JDK 8 for build+runtime vs add `javax.xml.bind/jaxb-api "2.3.1"` to all three project.clj files vs upgrade http-kit to 2.3.0+
+**Chosen**: Add `javax.xml.bind/jaxb-api "2.3.1"` dependency
+**Rationale**: `http-kit 2.1.18` uses `javax.xml.bind.DatatypeConverter` for base64 encoding, which was removed in JDK 11+. Adding the JAXB API as an explicit dependency is the most minimal fix -- it keeps JDK 17 everywhere (build + runtime), doesn't require upgrading http-kit (which could introduce regressions), and the JAXB jar is included in the uberjar for runtime availability.
+
 ## nginx Reverse Proxy on Frontend EC2
 
 **Options**: Serve directly from JVM on port 80 vs nginx as reverse proxy on port 80
